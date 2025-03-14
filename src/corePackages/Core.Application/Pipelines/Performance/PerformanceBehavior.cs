@@ -6,47 +6,50 @@ using System.Diagnostics;
 
 namespace Core.Application.Pipelines.Performance;
 
+using System.Diagnostics;
+using MediatR;
+using Microsoft.Extensions.Logging;
+
+namespace Core.Application.Pipelines.Performance;
+
 public class PerformanceBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
-    where TRequest : IRequest<TResponse>, IIntervalRequest
+    where TRequest : IRequest<TResponse>, IPerformanceRequest
 {
     private readonly ILogger<PerformanceBehavior<TRequest, TResponse>> _logger;
     private readonly Stopwatch _stopwatch;
-    private readonly IMailService _mailService;
 
-    public PerformanceBehavior(ILogger<PerformanceBehavior<TRequest, TResponse>> logger, Stopwatch stopwatch, IMailService mailService)
+    public PerformanceBehavior(ILogger<PerformanceBehavior<TRequest, TResponse>> logger)
     {
         _logger = logger;
-        _stopwatch = stopwatch;
-        _mailService = mailService;
+        _stopwatch = new Stopwatch();
     }
+
     public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         string requestName = request.GetType().Name;
+        
+        _stopwatch.Start();
+        
+        var response = await next();
+        
+        _stopwatch.Stop();
 
-        TResponse response;
+        long elapsedMilliseconds = _stopwatch.ElapsedMilliseconds;
 
-        try
+        if (elapsedMilliseconds > request.ThresholdInMilliseconds)
         {
-            _stopwatch.Start();
-            response = await next();
+            string message = $"Performance Alert - {requestName} processed in {elapsedMilliseconds} ms. Threshold: {request.ThresholdInMilliseconds} ms.";
+            
+            if (elapsedMilliseconds > request.ThresholdInMilliseconds * 2)
+                _logger.LogCritical(message);
+            else if (elapsedMilliseconds > request.ThresholdInMilliseconds * 1.5)
+                _logger.LogError(message);
+            else
+                _logger.LogWarning(message);
         }
-        finally
+        else
         {
-            if (_stopwatch.Elapsed.TotalSeconds > request.Interval)
-            {
-                string message = $"Performance -> {requestName} {_stopwatch.Elapsed.TotalSeconds.ToString()} s";
-
-                Debug.WriteLine(message);
-                _logger.LogInformation(message);
-                _mailService.SendEmailAsync(new Mail
-                {
-                    Subject = "Performans Mail",
-                    TextBody = $"{message}",
-                    ToList = new List<MailboxAddress> { new(name:"Abb Garjan Group",address:"mail@abbgarjangroup.com")}
-                });
-            }
-
-            _stopwatch.Restart();
+            _logger.LogInformation($"Performance - {requestName} processed in {elapsedMilliseconds} ms.");
         }
 
         return response;

@@ -1,6 +1,14 @@
 ﻿namespace Core.Application.Pipelines.Performance;
 
-public interface IIntervalRequest
+/// <summary>
+/// Interface for requests that require performance monitoring.
+/// Defines the interval threshold for performance tracking.
+/// </summary>
+public interface IPerformanceRequest
 {
-    public int Interval { get; }
+    /// <summary>
+    /// Gets the interval threshold in seconds.
+    /// Operations taking longer than this interval will trigger performance alerts.
+    /// </summary>
+   int ThresholdInMilliseconds { get; }
 }

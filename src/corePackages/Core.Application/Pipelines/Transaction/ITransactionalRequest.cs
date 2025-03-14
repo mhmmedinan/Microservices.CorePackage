@@ -1,3 +1,10 @@
-﻿namespace Core.Application.Pipelines.Transaction;
+﻿using System.Transactions;
 
-public interface ITransactionalRequest { }
+namespace Core.Application.Pipelines.Transaction;
+
+public interface ITransactionalRequest
+{
+    IsolationLevel IsolationLevel { get; }
+    TimeSpan? Timeout { get; }
+    bool RequiresNew { get; }
+}
