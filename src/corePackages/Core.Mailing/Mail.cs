@@ -2,6 +2,9 @@
 
 namespace Core.Mailing;
 
+/// <summary>
+/// Represents an email message with all its components.
+/// </summary>
 public class Mail
 {
     public string Subject { get; set; }
