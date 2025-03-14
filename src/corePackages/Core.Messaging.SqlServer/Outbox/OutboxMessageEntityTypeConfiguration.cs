@@ -1,44 +1,52 @@
 ﻿using Core.Abstractions.Messaging.Outbox;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Core.Messaging.SqlServer.Outbox;
 
+/// <summary>
+/// Entity type configuration for OutboxMessage in SQL Server
+/// </summary>
 public class OutboxMessageEntityTypeConfiguration : IEntityTypeConfiguration<OutboxMessage>
 {
+    /// <summary>
+    /// Configures the entity mapping for OutboxMessage
+    /// </summary>
+    /// <param name="builder">The entity type builder</param>
     public void Configure(EntityTypeBuilder<OutboxMessage> builder)
     {
         builder.ToTable("OutboxMessages", OutboxDataContext.DefaultSchema);
 
         builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).ValueGeneratedNever();
 
-        builder.Property(x => x.Id)
+        builder.Property(x => x.EventId)
             .IsRequired();
 
-        builder.Property(x => x.Name)
+        builder.Property(x => x.EventType)
             .IsRequired();
 
         builder.Property(x => x.OccurredOn)
             .IsRequired();
 
+        builder.Property(x => x.ProcessedOn)
+            .IsRequired(false);
+
+        builder.Property(x => x.Error)
+            .IsRequired(false);
+
         builder.Property(x => x.Type)
-            .IsRequired();
+            .IsRequired()
+            .HasMaxLength(500);
+
+        builder.Property(x => x.Name)
+            .IsRequired()
+            .HasMaxLength(100);
 
         builder.Property(x => x.Data)
             .IsRequired();
 
-        builder.Property(x => x.EventType)
-            .IsRequired();
-
-        builder.Property(x => x.EventType)
-            .HasMaxLength(50)
-            .HasConversion(
-                v => v.ToString(),
-                v => (EventType)Enum.Parse(typeof(EventType), v))
-            .IsRequired()
-            .IsUnicode(false);
-
-        builder.Property(x => x.ProcessedOn)
+        builder.Property(x => x.CorrelationId)
             .IsRequired(false);
     }
 }

@@ -7,13 +7,28 @@ using Microsoft.Extensions.Logging;
 
 namespace Core.Messaging.SqlServer.Extensions;
 
+/// <summary>
+/// Extension methods for configuring SQL Server messaging in the application pipeline
+/// </summary>
 public static class ApplicationBuilderExtensions
 {
+    /// <summary>
+    /// Configures SQL Server messaging services in the application
+    /// </summary>
+    /// <param name="app">The application builder</param>
+    /// <param name="logger">Logger instance for migration operations</param>
+    /// <returns>A task representing the asynchronous operation</returns>
     public static async Task UseSqlServerMessaging(this IApplicationBuilder app, ILogger logger)
     {
         await ApplyDatabaseMigrations(app, logger);
     }
 
+    /// <summary>
+    /// Applies any pending database migrations for the outbox context
+    /// </summary>
+    /// <param name="app">The application builder</param>
+    /// <param name="logger">Logger instance for migration operations</param>
+    /// <returns>A task representing the asynchronous operation</returns>
     public static async Task ApplyDatabaseMigrations(this IApplicationBuilder app, ILogger logger)
     {
         var configuration = app.ApplicationServices.GetRequiredService<IConfiguration>();
