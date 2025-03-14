@@ -2,15 +2,28 @@
 
 namespace Core.ElasticSearch.Models;
 
+/// <summary>
+/// Base model for Elasticsearch operations that require an index name and document ID.
+/// </summary>
 public class ElasticSearchModel
 {
-    public Id ElasticId { get; set; }
+    /// <summary>
+    /// Gets or sets the name of the index to operate on.
+    /// </summary>
     public string IndexName { get; set; }
 
+    /// <summary>
+    /// Gets or sets the ID of the document in Elasticsearch.
+    /// </summary>
+    public string ElasticId { get; set; }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ElasticSearchModel"/> class.
+    /// </summary>
     public ElasticSearchModel()
     {
-        ElasticId = null!;
         IndexName = string.Empty;
+        ElasticId = string.Empty;
     }
 
     public ElasticSearchModel(Id elasticId, string indexName)
