@@ -1,10 +1,19 @@
 ﻿using MediatR;
+using Core.CrossCuttingConcerns.Utilities.Results;
 
 namespace Core.Abstractions.CQRS.Command;
 
+/// <summary>
+/// Represents a command for updating an existing entity.
+/// </summary>
+/// <typeparam name="TResponse">The type of response returned after update.</typeparam>
 public interface IUpdateCommand<out TResponse> : ICommand<TResponse>
-    where TResponse : notnull
 {
-
 }
-public interface IUpdateCommand : IUpdateCommand<Unit> { }
+
+/// <summary>
+/// Represents a command for updating an existing entity without returning a value.
+/// </summary>
+public interface IUpdateCommand : IUpdateCommand<Unit>
+{
+}

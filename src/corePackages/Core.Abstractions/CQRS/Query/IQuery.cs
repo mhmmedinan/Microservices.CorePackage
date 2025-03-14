@@ -2,7 +2,10 @@
 
 namespace Core.Abstractions.CQRS.Query;
 
-public interface IQuery<out T> : IRequest<T>
-    where T : notnull
+/// <summary>
+/// Represents a query request in the CQRS pattern.
+/// </summary>
+/// <typeparam name="TResponse">The type of response returned by the query.</typeparam>
+public interface IQuery<out TResponse> : IRequest<TResponse>
 {
 }

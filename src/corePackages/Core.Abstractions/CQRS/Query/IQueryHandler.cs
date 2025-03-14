@@ -1,9 +1,13 @@
-﻿using Core.CrossCuttingConcerns.Utilities.Results;
-using MediatR;
+﻿using MediatR;
 
 namespace Core.Abstractions.CQRS.Query;
 
-public interface IQueryHandler<in TQuery, TResponse> : IRequestHandler<TQuery, DataResult<TResponse>>
-    where TQuery : IQuery<DataResult<TResponse>>
+/// <summary>
+/// Defines a handler for processing query requests.
+/// </summary>
+/// <typeparam name="TQuery">The type of query being handled.</typeparam>
+/// <typeparam name="TResponse">The type of response being returned.</typeparam>
+public interface IQueryHandler<in TQuery, TResponse> : IRequestHandler<TQuery, TResponse>
+    where TQuery : IQuery<TResponse>
 {
 }
