@@ -23,6 +23,7 @@ Core.Application package provides essential structures and behaviors for the app
 - Threshold monitoring and warning system
 - Critical performance issue alerts
 - Custom threshold configuration
+- Email notifications for slow operations
 
 #### 💾 Caching
 - `CachingBehavior`: Distributed cache management
@@ -127,7 +128,9 @@ public class CreateOrderCommand : IRequest<Order>, ITransactionalRequest
 {
   "PerformanceSettings": {
     "ThresholdInMilliseconds": 500,
-    "EnableEmailAlerts": true
+    "EnableEmailAlerts": true,
+    "AlertEmailAddress": "alerts@example.com",
+    "AlertEmailDisplayName": "Performance Monitoring"
   }
 }
 ```
