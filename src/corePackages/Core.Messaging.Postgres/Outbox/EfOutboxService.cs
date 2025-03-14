@@ -12,6 +12,9 @@ using Microsoft.Extensions.Options;
 
 namespace Core.Messaging.Postgres.Outbox;
 
+/// <summary>
+/// Implementation of outbox pattern using Entity Framework Core and PostgreSQL
+/// </summary>
 public class EfOutboxService<TContext> : IOutboxService
     where TContext : EfDbContextBase
 {
@@ -22,6 +25,15 @@ public class EfOutboxService<TContext> : IOutboxService
     private readonly IMediator _mediator;
     private readonly OutboxDataContext _outboxDataContext;
 
+    /// <summary>
+    /// Initializes a new instance of the EfOutboxService
+    /// </summary>
+    /// <param name="options">Outbox configuration options</param>
+    /// <param name="logger">Logger instance</param>
+    /// <param name="messageSerializer">Message serializer service</param>
+    /// <param name="eventBusPublisher">Event bus publisher service</param>
+    /// <param name="mediator">MediatR mediator instance</param>
+    /// <param name="outboxDataContext">Database context for outbox operations</param>
     public EfOutboxService(
         IOptions<OutboxOptions> options,
         ILogger<EfOutboxService<TContext>> logger,
@@ -38,6 +50,10 @@ public class EfOutboxService<TContext> : IOutboxService
         _outboxDataContext = outboxDataContext;
     }
 
+    /// <summary>
+    /// Removes all processed messages from the outbox
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
     public async Task CleanProcessedAsync(CancellationToken cancellationToken = default)
     {
         var messages = await _outboxDataContext.OutboxMessages
@@ -47,6 +63,12 @@ public class EfOutboxService<TContext> : IOutboxService
         await _outboxDataContext.SaveChangesAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Retrieves all outbox messages of specified event type
+    /// </summary>
+    /// <param name="eventType">Type of events to retrieve</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Collection of outbox messages</returns>
     public async Task<IEnumerable<OutboxMessage>> GetAllOutboxMessagesAsync(EventType eventType = EventType.IntegrationEvent, CancellationToken cancellationToken = default)
     {
         var messages = await _outboxDataContext.OutboxMessages
@@ -55,6 +77,12 @@ public class EfOutboxService<TContext> : IOutboxService
         return messages;
     }
 
+    /// <summary>
+    /// Retrieves all unsent outbox messages of specified event type
+    /// </summary>
+    /// <param name="eventType">Type of events to retrieve</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Collection of unsent outbox messages</returns>
     public async Task<IEnumerable<OutboxMessage>> GetAllUnsentOutboxMessagesAsync(EventType eventType = EventType.IntegrationEvent, CancellationToken cancellationToken = default)
     {
         var messages = await _outboxDataContext.OutboxMessages
@@ -64,6 +92,10 @@ public class EfOutboxService<TContext> : IOutboxService
         return messages;
     }
 
+    /// <summary>
+    /// Publishes all unsent messages from the outbox
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
     public async Task PublishUnsentOutboxMessagesAsync(CancellationToken cancellationToken = default)
     {
         var unsentMessages = await _outboxDataContext.OutboxMessages
@@ -82,7 +114,6 @@ public class EfOutboxService<TContext> : IOutboxService
         foreach (var outboxMessage in unsentMessages)
         {
             var type = Type.GetType(outboxMessage.Type);
-
             Guard.Against.Null(type, nameof(type));
 
             dynamic? data = _messageSerializer.Deserialize(outboxMessage.Data, type);
@@ -92,14 +123,11 @@ public class EfOutboxService<TContext> : IOutboxService
                 continue;
             }
 
-
             if (outboxMessage.EventType == EventType.IntegrationEvent && data is IIntegrationEvent integrationEvent)
             {
-                // integration event
                 await _eventBusPublisher.PublishAsync(integrationEvent, cancellationToken);
-
                 _logger.LogInformation(
-                    "Publish a message: '{Name}' with ID: '{Id} (outbox)'",
+                    "Published a message: '{Name}' with ID: '{Id} (outbox)'",
                     outboxMessage.Name,
                     integrationEvent?.EventId);
             }
@@ -110,16 +138,24 @@ public class EfOutboxService<TContext> : IOutboxService
         await _outboxDataContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Saves a single integration event to the outbox
+    /// </summary>
+    /// <param name="integrationEvent">Integration event to save</param>
+    /// <param name="cancellationToken">Cancellation token</param>
     public async Task SaveAsync(IIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
     {
         Guard.Against.Null(integrationEvent, nameof(integrationEvent));
-
         await SaveAsync(new[] { integrationEvent }, cancellationToken);
     }
 
+    /// <summary>
+    /// Saves multiple integration events to the outbox
+    /// </summary>
+    /// <param name="integrationEvents">Array of integration events to save</param>
+    /// <param name="cancellationToken">Cancellation token</param>
     public async Task SaveAsync(IIntegrationEvent[] integrationEvents, CancellationToken cancellationToken = default)
     {
-
         Guard.Against.Null(integrationEvents, nameof(integrationEvents));
 
         if (integrationEvents.Any() == false)
@@ -134,7 +170,6 @@ public class EfOutboxService<TContext> : IOutboxService
         foreach (var integrationEvent in integrationEvents)
         {
             string name = integrationEvent.GetType().Name;
-
             var outboxMessages = new OutboxMessage(
                 integrationEvent.EventId,
                 integrationEvent.OccurredOn,
@@ -148,7 +183,6 @@ public class EfOutboxService<TContext> : IOutboxService
         }
 
         await _outboxDataContext.SaveChangesAsync(cancellationToken);
-
         _logger.LogInformation("Saved message to the outbox");
     }
 }

@@ -7,13 +7,28 @@ using Microsoft.Extensions.Logging;
 
 namespace Core.Messaging.Postgres.Extensions;
 
+/// <summary>
+/// Extension methods for configuring PostgreSQL messaging in the application pipeline
+/// </summary>
 public static class ApplicationBuilderExtensions
 {
+    /// <summary>
+    /// Configures PostgreSQL messaging services in the application
+    /// </summary>
+    /// <param name="app">The application builder</param>
+    /// <param name="logger">Logger instance for migration operations</param>
+    /// <returns>A task representing the asynchronous operation</returns>
     public static async Task UsePostgresMessaging(this IApplicationBuilder app, ILogger logger)
     {
         await ApplyDatabaseMigrations(app, logger);
     }
 
+    /// <summary>
+    /// Applies any pending database migrations for the outbox context
+    /// </summary>
+    /// <param name="app">The application builder</param>
+    /// <param name="logger">Logger instance for migration operations</param>
+    /// <returns>A task representing the asynchronous operation</returns>
     public static async Task ApplyDatabaseMigrations(this IApplicationBuilder app, ILogger logger)
     {
         var configuration = app.ApplicationServices.GetRequiredService<IConfiguration>();
@@ -23,9 +38,7 @@ public static class ApplicationBuilderExtensions
             var outboxDbContext = serviceScope.ServiceProvider.GetRequiredService<OutboxDataContext>();
 
             logger.LogInformation("Updating outbox-message database migrations...");
-
             await outboxDbContext.Database.MigrateAsync();
-
             logger.LogInformation("Updated outbox-message database migrations");
         }
     }
