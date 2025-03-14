@@ -10,7 +10,9 @@ using System.Net;
 
 namespace Core.Messaging.Transport.InMemory.Diagnostics;
 
-// https://github.com/dotnet/runtime/blob/4f9ae42d861fcb4be2fcd5d3d55d5f227d30e723/src/libraries/System.Net.Http/src/System/Net/Http/DiagnosticsHandler.cs#L78
+/// <summary>
+/// Provides diagnostic capabilities for in-memory message producers using OpenTelemetry
+/// </summary>
 public class InMemoryProducerDiagnostics
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
@@ -18,12 +20,21 @@ public class InMemoryProducerDiagnostics
     private static readonly DiagnosticSource DiagnosticListener = new DiagnosticListener(OTelTransportOptions.InMemoryProducerActivityName);
     private static readonly TextMapPropagator Propagator = new TraceContextPropagator();
 
+    /// <summary>
+    /// Initializes a new instance of the InMemoryProducerDiagnostics class
+    /// </summary>
+    /// <param name="httpContextAccessor">HTTP context accessor for tracing context propagation</param>
     public InMemoryProducerDiagnostics(IHttpContextAccessor httpContextAccessor)
     {
         _httpContextAccessor = httpContextAccessor;
     }
 
-
+    /// <summary>
+    /// Starts a diagnostic activity for message publishing
+    /// </summary>
+    /// <typeparam name="T">Type of the integration event</typeparam>
+    /// <param name="message">The integration event being published</param>
+    /// <returns>The created diagnostic activity</returns>
     public Activity StartActivity<T>(T message)
        where T : IIntegrationEvent
     {
@@ -46,7 +57,11 @@ public class InMemoryProducerDiagnostics
         return activity;
     }
 
-
+    /// <summary>
+    /// Stops a diagnostic activity for message publishing
+    /// </summary>
+    /// <typeparam name="T">Type of the integration event</typeparam>
+    /// <param name="message">The integration event that was published</param>
     public void StopActivity<T>(T message)
        where T : IIntegrationEvent
     {
@@ -66,7 +81,11 @@ public class InMemoryProducerDiagnostics
         }
     }
 
-
+    /// <summary>
+    /// Records a diagnostic event when no subscribers are available for a message
+    /// </summary>
+    /// <typeparam name="T">Type of the integration event</typeparam>
+    /// <param name="message">The integration event that had no subscribers</param>
     public void NoSubscriberToPublish<T>(T message)
        where T : IIntegrationEvent
     {
@@ -77,7 +96,10 @@ public class InMemoryProducerDiagnostics
         }
     }
 
-
+    /// <summary>
+    /// Injects tracing headers into the current HTTP context
+    /// </summary>
+    /// <param name="activity">The current diagnostic activity</param>
     private void InjectHeaders(Activity activity)
     {
         if (_httpContextAccessor.HttpContext is null)
@@ -126,5 +148,4 @@ public class InMemoryProducerDiagnostics
                 baggage);
         }
     }
-
 }

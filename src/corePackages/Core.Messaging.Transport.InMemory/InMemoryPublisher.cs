@@ -6,6 +6,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Core.Messaging.Transport.InMemory;
 
+/// <summary>
+/// In-memory implementation of event bus publisher
+/// </summary>
 public class InMemoryPublisher : IEventBusPublisher
 {
     private readonly ILogger<InMemoryPublisher> _logger;

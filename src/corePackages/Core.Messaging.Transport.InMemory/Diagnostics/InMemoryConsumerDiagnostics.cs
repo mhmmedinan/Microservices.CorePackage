@@ -10,8 +10,9 @@ using System.Diagnostics;
 
 namespace Core.Messaging.Transport.InMemory.Diagnostics;
 
-
-// https://github.com/dotnet/aspnetcore/blob/main/src/Hosting/Hosting/src/Internal/HostingApplicationDiagnostics.cs#L314
+/// <summary>
+/// Provides diagnostic capabilities for in-memory message consumers using OpenTelemetry
+/// </summary>
 public class InMemoryConsumerDiagnostics
 {
     private static readonly DiagnosticSource DiagnosticListener =
@@ -20,12 +21,21 @@ public class InMemoryConsumerDiagnostics
     private static readonly TextMapPropagator Propagator = Propagators.DefaultTextMapPropagator;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
+    /// <summary>
+    /// Initializes a new instance of the InMemoryConsumerDiagnostics class
+    /// </summary>
+    /// <param name="httpContextAccessor">HTTP context accessor for tracing context propagation</param>
     public InMemoryConsumerDiagnostics(IHttpContextAccessor httpContextAccessor)
     {
         _httpContextAccessor = httpContextAccessor;
     }
 
-
+    /// <summary>
+    /// Starts a diagnostic activity for message processing
+    /// </summary>
+    /// <typeparam name="T">Type of the integration event</typeparam>
+    /// <param name="message">The integration event being processed</param>
+    /// <returns>The created diagnostic activity</returns>
     public Activity StartActivity<T>(T message)
         where T : class, IIntegrationEvent
     {
@@ -94,6 +104,11 @@ public class InMemoryConsumerDiagnostics
         return activity;
     }
 
+    /// <summary>
+    /// Stops a diagnostic activity for message processing
+    /// </summary>
+    /// <typeparam name="T">Type of the integration event</typeparam>
+    /// <param name="message">The integration event that was processed</param>
     public void StopActivity<T>(T message)
         where T : class, IIntegrationEvent
     {
