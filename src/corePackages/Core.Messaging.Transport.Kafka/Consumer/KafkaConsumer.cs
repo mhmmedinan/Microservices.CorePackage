@@ -10,15 +10,29 @@ using Core.Messaging.Transport.Kafka.SchemaRegistry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Threading.Tasks.Dataflow;
 
 namespace Core.Messaging.Transport.Kafka.Consumer;
 
-public class KafkaConsumer : IEventBusSubscriber
+/// <summary>
+/// Implements the event bus subscriber interface using Apache Kafka
+/// </summary>
+public class KafkaConsumer : IEventBusSubscriber, IDisposable
 {
     private readonly KafkaConsumerConfig _config;
     private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly ILogger<KafkaConsumer> _logger;
+    private readonly CachedSchemaRegistryClient _schemaRegistry;
+    private readonly IConsumer<string, GenericRecord> _consumer;
+    private readonly ActionBlock<ConsumeResult<string, GenericRecord>> _processingBlock;
+    private bool _disposed;
 
+    /// <summary>
+    /// Initializes a new instance of the KafkaConsumer class
+    /// </summary>
+    /// <param name="configuration">Application configuration</param>
+    /// <param name="serviceScopeFactory">Service scope factory for dependency injection</param>
+    /// <param name="logger">Logger instance</param>
     public KafkaConsumer(
         IConfiguration configuration,
         IServiceScopeFactory serviceScopeFactory,
@@ -29,78 +43,135 @@ public class KafkaConsumer : IEventBusSubscriber
         Guard.Against.Null(configuration, nameof(configuration));
 
         _config = configuration.GetKafkaConsumerConfig();
-    }
 
-
-    public async Task StartAsync(CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("Kafka consumer started");
-
-        using var scope = _serviceScopeFactory.CreateScope();
-        var eventProcessor = scope.ServiceProvider.GetRequiredService<IEventProcessor>();
-
-        var schemaRegistryConfig = new SchemaRegistryConfig
+        _schemaRegistry = new CachedSchemaRegistryClient(new SchemaRegistryConfig
         {
-            // Note: you can specify more than one schema registry url using the
-            // schema.registry.url property for redundancy (comma separated list).
-            // The property name is not plural to follow the convention set by
-            // the Java implementation.
             Url = _config.SchemaRegistryUrl
-        };
+        });
 
-        using var schemaRegistry = new CachedSchemaRegistryClient(schemaRegistryConfig);
-        using var consumer = new ConsumerBuilder<string, GenericRecord>(_config)
-            .SetErrorHandler((_, e) => Console.WriteLine($"Error: {e.Reason}"))
-            .SetStatisticsHandler((_, json) => Console.WriteLine($"Statistics: {json}"))
-            .SetValueDeserializer(new AvroDeserializer<GenericRecord>(schemaRegistry).AsSyncOverAsync())
+        _consumer = new ConsumerBuilder<string, GenericRecord>(_config)
+            .SetErrorHandler((_, e) => _logger.LogError("Kafka consumer error: {Error}", e.Reason))
+            .SetStatisticsHandler((_, json) => _logger.LogDebug("Kafka consumer statistics: {Statistics}", json))
+            .SetValueDeserializer(new AvroDeserializer<GenericRecord>(_schemaRegistry).AsSyncOverAsync())
             .Build();
 
-        consumer.Subscribe(_config.Topics);
+        _processingBlock = new ActionBlock<ConsumeResult<string, GenericRecord>>(
+            ProcessMessageAsync,
+            new ExecutionDataflowBlockOptions
+            {
+                MaxDegreeOfParallelism = _config.MaxParallelism
+            });
+    }
 
+    /// <summary>
+    /// Starts consuming messages from Kafka topics
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    public async Task StartAsync(CancellationToken cancellationToken = default)
+    {
         try
         {
-            while (cancellationToken.IsCancellationRequested == false)
+            _logger.LogInformation(
+                "Starting Kafka consumer for topics: {Topics}",
+                string.Join(", ", _config.Topics));
+
+            _consumer.Subscribe(_config.Topics);
+
+            while (!cancellationToken.IsCancellationRequested)
             {
                 try
                 {
-                    var result = consumer.Consume(TimeSpan.FromSeconds(3));
+                    var consumeResult = _consumer.Consume(TimeSpan.FromSeconds(1));
+                    if (consumeResult == null) continue;
 
-                    if (result is null)
-                        continue;
-
-                    var fullSchemaName = result.Message.Value.Schema.SchemaName.Fullname;
-                    var genericRecord = result.Message.Value;
-                    var bytes = await genericRecord.SerializeAsync(schemaRegistry);
-                    var @event = await _config.EventResolver?.Invoke(fullSchemaName, bytes, schemaRegistry)!;
-
-                    _logger.LogInformation(
-                        $"Received {result.Message?.Key!}-{result.Message?.Value?.GetType().FullName!} message.");
-                    if (@event is IEvent)
-                    {
-                        // Publish to internal event bus
-                        await eventProcessor.DispatchAsync(@event as IEvent, cancellationToken);
-                        _logger.LogInformation($"Dispatched {@event.GetType()?.FullName} event to internal handler.");
-                    }
-
-                    consumer.Commit(result);
+                    await _processingBlock.SendAsync(consumeResult, cancellationToken);
                 }
                 catch (ConsumeException ex)
                 {
-                    Console.Write(ex);
+                    _logger.LogError(ex,
+                        "Error consuming message from Kafka: {ErrorReason}",
+                        ex.Error.Reason);
                 }
             }
         }
         catch (OperationCanceledException)
         {
-            // commit final offsets and leave the group.
-            consumer.Close();
+            _logger.LogInformation("Kafka consumer stopping due to cancellation");
         }
-
-        consumer.Unsubscribe();
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error in Kafka consumer");
+            throw;
+        }
+        finally
+        {
+            _consumer.Unsubscribe();
+        }
     }
 
-    public Task StopAsync(CancellationToken cancellationToken = default)
+    private async Task ProcessMessageAsync(ConsumeResult<string, GenericRecord> consumeResult)
     {
-        return Task.CompletedTask;
+        try
+        {
+            var fullSchemaName = consumeResult.Message.Value.Schema.SchemaName.Fullname;
+            var genericRecord = consumeResult.Message.Value;
+            var bytes = await genericRecord.SerializeAsync(_schemaRegistry);
+
+            _logger.LogDebug(
+                "Processing message with key {MessageKey} from topic {Topic}",
+                consumeResult.Message.Key,
+                consumeResult.Topic);
+
+            if (_config.EventResolver != null)
+            {
+                var @event = await _config.EventResolver(fullSchemaName, bytes, _schemaRegistry);
+                if (@event is IEvent eventMessage)
+                {
+                    using var scope = _serviceScopeFactory.CreateScope();
+                    var eventProcessor = scope.ServiceProvider.GetRequiredService<IEventProcessor>();
+                    await eventProcessor.DispatchAsync(eventMessage);
+
+                    _logger.LogInformation(
+                        "Successfully processed event {EventType} from topic {Topic}",
+                        @event.GetType().Name,
+                        consumeResult.Topic);
+
+                    _consumer.Commit(consumeResult);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Error processing message from topic {Topic}: {ErrorMessage}",
+                consumeResult.Topic,
+                ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Stops the Kafka consumer
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    public async Task StopAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Stopping Kafka consumer");
+        _processingBlock.Complete();
+        await _processingBlock.Completion;
+        Dispose();
+    }
+
+    /// <summary>
+    /// Disposes of resources used by the Kafka consumer
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed) return;
+
+        _consumer?.Dispose();
+        _schemaRegistry?.Dispose();
+        (_processingBlock as IDisposable)?.Dispose();
+
+        _disposed = true;
     }
 }
