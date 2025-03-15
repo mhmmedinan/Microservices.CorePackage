@@ -10,8 +10,17 @@ using System.Text;
 
 namespace Core.Monitoring.HealthChecks;
 
+/// <summary>
+/// Extension methods for configuring monitoring services in the application.
+/// </summary>
 public static class ServiceCollectionExtensions
 {
+    /// <summary>
+    /// Adds monitoring services to the service collection.
+    /// </summary>
+    /// <param name="services">The service collection to add monitoring to.</param>
+    /// <param name="healthChecksBuilder">Optional action to configure additional health checks.</param>
+    /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddMonitoring(this IServiceCollection services, Action<IHealthChecksBuilder>? healthChecksBuilder = null)
     {
         using var serviceProvider = services.BuildServiceProvider();
@@ -27,6 +36,11 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>
+    /// Configures the application to use monitoring middleware.
+    /// </summary>
+    /// <param name="app">The application builder.</param>
+    /// <returns>The application builder for chaining.</returns>
     public static IApplicationBuilder UseMonitoring(this IApplicationBuilder app)
     {
         app.UseHttpMetrics();
@@ -49,14 +63,14 @@ public static class ServiceCollectionExtensions
                 {
                     Predicate = (check) => !check.Tags.Contains("services"),
                     AllowCachingResponses = false,
-                    ResponseWriter = WriteResponseAsync,
+                    ResponseWriter = HealthCheckHelper.WriteResponseAsync,
                 })
             .UseHealthChecks("/health/ready",
                 new HealthCheckOptions
                 {
                     Predicate = _ => true,
                     AllowCachingResponses = false,
-                    ResponseWriter = WriteResponseAsync,
+                    ResponseWriter = HealthCheckHelper.WriteResponseAsync,
                 })
             .UseHealthChecksUI(setup =>
             {
@@ -65,34 +79,7 @@ public static class ServiceCollectionExtensions
             });
 
         return app;
-
     }
 
-    private static Task WriteResponseAsync(HttpContext context, HealthReport result)
-    {
-        context.Response.ContentType = "application/json; charset=utf-8";
-
-        var options = new JsonWriterOptions { Indented = true };
-
-        using var stream = new MemoryStream();
-        using (var writer = new Utf8JsonWriter(stream, options))
-        {
-            writer.WriteStartObject();
-            writer.WriteString("status", result.Status.ToString());
-            writer.WriteStartObject("results");
-            foreach (var entry in result.Entries)
-            {
-                writer.WriteStartObject(entry.Key);
-                writer.WriteString("status", entry.Value.Status.ToString());
-                writer.WriteEndObject();
-            }
-
-            writer.WriteEndObject();
-            writer.WriteEndObject();
-        }
-
-        var json = Encoding.UTF8.GetString(stream.ToArray());
-
-        return context.Response.WriteAsync(json, default);
-    }
+   
 }
