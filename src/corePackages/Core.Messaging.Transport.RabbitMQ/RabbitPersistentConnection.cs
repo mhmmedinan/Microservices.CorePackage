@@ -4,6 +4,9 @@ using RabbitMQ.Client;
 
 namespace Core.Messaging.Transport.RabbitMQ;
 
+/// <summary>
+/// Implements a persistent connection to RabbitMQ with automatic reconnection capabilities.
+/// </summary>
 public sealed class RabbitPersistentConnection : IDisposable, IBusConnection
 {
     private readonly ILogger<RabbitPersistentConnection> _logger;
@@ -13,14 +16,26 @@ public sealed class RabbitPersistentConnection : IDisposable, IBusConnection
 
     private readonly object semaphore = new();
 
+    /// <summary>
+    /// Initializes a new instance of the RabbitPersistentConnection class.
+    /// </summary>
+    /// <param name="connectionFactory">The RabbitMQ connection factory.</param>
+    /// <param name="logger">Logger for connection-related events.</param>
+    /// <exception cref="ArgumentNullException">Thrown when connectionFactory or logger is null.</exception>
     public RabbitPersistentConnection(IConnectionFactory connectionFactory, ILogger<RabbitPersistentConnection> logger)
     {
         _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    /// <summary>
+    /// Gets a value indicating whether the connection is currently established and open.
+    /// </summary>
     public bool IsConnected => _connection != null && _connection.IsOpen && !_disposed;
 
+    /// <summary>
+    /// Disposes the connection and releases all resources.
+    /// </summary>
     public void Dispose()
     {
         if (_disposed)
@@ -30,6 +45,9 @@ public sealed class RabbitPersistentConnection : IDisposable, IBusConnection
         _connection?.Dispose();
     }
 
+    /// <summary>
+    /// Attempts to establish a connection to RabbitMQ with retry policy.
+    /// </summary>
     private void TryConnect()
     {
         lock (semaphore)
@@ -55,6 +73,11 @@ public sealed class RabbitPersistentConnection : IDisposable, IBusConnection
         }
     }
 
+    /// <summary>
+    /// Creates a new channel for communication with RabbitMQ.
+    /// </summary>
+    /// <returns>A new channel instance.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when no RabbitMQ connections are available.</exception>
     public IModel CreateChannel()
     {
         TryConnect();
@@ -64,6 +87,4 @@ public sealed class RabbitPersistentConnection : IDisposable, IBusConnection
 
         return _connection.CreateModel();
     }
-
-   
 }

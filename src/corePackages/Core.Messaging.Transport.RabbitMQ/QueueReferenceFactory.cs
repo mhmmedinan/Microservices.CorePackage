@@ -6,12 +6,22 @@ using System.Collections.Concurrent;
 
 namespace Core.Messaging.Transport.RabbitMQ;
 
+/// <summary>
+/// Implements factory for creating queue references with caching support.
+/// </summary>
 public class QueueReferenceFactory : IQueueReferenceFactory
 {
     private readonly ConcurrentDictionary<Type, QueueReferences> _queueReferencesCache = new();
     private readonly Func<Type, QueueReferences> _defaultCreator;
     private readonly IServiceProvider _sp;
 
+    /// <summary>
+    /// Initializes a new instance of the QueueReferenceFactory class.
+    /// </summary>
+    /// <param name="sp">The service provider.</param>
+    /// <param name="systemInfo">System information for queue naming.</param>
+    /// <param name="defaultCreator">Optional custom queue reference creator function.</param>
+    /// <exception cref="ArgumentNullException">Thrown when sp or systemInfo is null.</exception>
     public QueueReferenceFactory(
         IServiceProvider sp,
         ISystemInfo systemInfo,
@@ -50,22 +60,34 @@ public class QueueReferenceFactory : IQueueReferenceFactory
         }));
     }
 
+    /// <summary>
+    /// Creates queue references for a specific message type with caching.
+    /// </summary>
+    /// <typeparam name="TM">The type of the integration event.</typeparam>
+    /// <param name="message">Optional message instance.</param>
+    /// <returns>Queue references for the message type.</returns>
     public QueueReferences Create<TM>(TM message = default)
            where TM : IIntegrationEvent
            => _queueReferencesCache.GetOrAdd(typeof(TM), k => CreateCore<TM>());
 
-
+    /// <summary>
+    /// Creates queue references for a specific message type using custom policy or default creator.
+    /// </summary>
+    /// <typeparam name="TM">The type of the integration event.</typeparam>
+    /// <returns>Queue references for the message type.</returns>
     private QueueReferences CreateCore<TM>()
            where TM : IIntegrationEvent
     {
         var creator = _sp.GetService<QueueReferencesPolicy<TM>>();
         return (creator is null) ? _defaultCreator(typeof(TM)) : creator();
     }
-
-
- 
 }
 
+/// <summary>
+/// Delegate for custom queue reference creation policy.
+/// </summary>
+/// <typeparam name="TM">The type of the integration event.</typeparam>
+/// <returns>Queue references for the message type.</returns>
 public delegate QueueReferences QueueReferencesPolicy<TM>()
      where TM : IIntegrationEvent;
 
