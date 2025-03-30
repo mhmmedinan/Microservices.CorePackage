@@ -1,270 +1,103 @@
-# Microservices Core Package
+# 🧱 Microservices Core Package
 
-## Core.Abstractions
+This repository contains the **core packages** for building robust, scalable, and maintainable microservices using .NET 9. It is structured in a modular way to promote separation of concerns, reusability, and clean architectural practices.
 
-Core.Abstractions is a foundational package that provides essential building blocks and abstractions for microservices architecture. This package offers core components that enable reliable, scalable, and maintainable microservice development.
+> ✅ Each folder represents a **NuGet-ready package** with its own responsibility and internal `README.md` for detailed usage.
 
-### 📦 Package Structure
+---
 
-#### 1. Types
-Core type management and system information structures:
+## 📦 Package Overview
 
-- **ITypeResolver & TypeResolver**: 
-  - Dynamic type resolution at runtime
-  - Infrastructure for plugin and module systems
-  - Thread-safe type caching
-  - Assembly-based type resolution
-  - Support for dynamic loading of types
+| Package                              | Description                                                             |
+|--------------------------------------|-------------------------------------------------------------------------|
+| **Core.Abstractions**                | Base interfaces and contracts used across all layers                    |
+| **Core.Application**                 | Pipelines (e.g. validation, caching, logging, IP control) using MediatR |
+| **Core.CrossCuttingConcerns**        | Common concerns like exceptions, guards, enums                          |
+| **Core.ElasticSearch**               | Integration and abstraction for Elasticsearch                          |
+| **Core.Mailing**                     | Email infrastructure with SMTP support                                 |
+| **Core.Messaging.InMemory**          | In-memory messaging infrastructure (useful for testing)                |
+| **Core.Messaging.Postgres**          | Messaging implementation using PostgreSQL (Outbox Pattern)             |
+| **Core.Messaging.SqlServer**         | Messaging with SQL Server support (Outbox Pattern)                     |
+| **Core.Messaging.Transport.InMemory**| In-memory message transport abstraction                                |
+| **Core.Messaging.Transport.Kafka**   | Kafka transport for event-driven systems                               |
+| **Core.Messaging.Transport.RabbitMQ**| RabbitMQ transport infrastructure                                      |
+| **Core.Monitoring**                  | Health checks, metrics, logging extensions                             |
+| **Core.Persistence**                 | Persistence abstractions with UnitOfWork, Transaction support          |
+| **Core.Resiliency**                  | Retry, Circuit Breaker, Timeout policies (Polly)                       |
+| **Core.Scheduling.Hangfire**         | Delayed and recurring job scheduling using Hangfire                    |
+| **Core.Scheduling.Postgres.Internal**| Scheduled job store using PostgreSQL                                   |
+| **Core.Scheduling.SqlServer.Internal**| Scheduled job store using SQL Server                                   |
+| **Core.Security**                    | JWT, claims, and permission management                                 |
+| **Core.ServiceDiscovery**            | Service discovery abstractions (e.g. Eureka, Consul)                   |
+| **Core.Tracing**                     | Distributed tracing (OpenTelemetry, etc.)                              |
+| **Core.Test**                        | Common test utilities and base test setup                              |
 
-- **ISystemInfo**: 
-  - System-wide configuration and information
-  - Client ID and group management
-  - Publish-only mode control
-  - Instance tracking in distributed systems
+---
 
-- **ITypeList**: 
-  - Generic type list management
-  - Type-safe collection operations
-  - Base type constraints
-  - Dynamic type registration
+## 🚀 Getting Started
 
-#### 2. Messaging
-Inter-service communication and messaging infrastructure:
+Each package is designed to be independent and reusable across microservices.
 
-##### Core Components
+You can install them via `NuGet`:
 
-- **IMessage**:
-  ```csharp
-  public interface IMessage
-  {
-      string MessageId { get; }        // Unique message identifier
-      string CorrelationId { get; }    // Related message tracking
-      DateTime CreatedAt { get; }      // Creation timestamp
-      string MessageType { get; }      // Message type
-  }
-  ```
-
-- **IMessageHandler**:
-  ```csharp
-  public interface IMessageHandler<TMessage> where TMessage : IMessage
-  {
-      Task HandleAsync(
-          TMessage message,
-          IMessageContext messageContext,
-          CancellationToken cancellationToken = default);
-  }
-  ```
-
-- **IMessageProcessor**:
-  - Message processing pipeline management
-  - Middleware coordination
-  - Error handling and retry logic
-  - Transaction management
-
-##### Subsystems
-
-- **Transport**: 
-  - Message transport infrastructure
-  - Protocol support (RabbitMQ, Azure Service Bus, Kafka)
-  - Reliable message delivery
-  - Message routing and topology
-
-- **Outbox**: 
-  - Reliable message sending
-  - Transactional consistency
-  - At-least-once delivery guarantee
-  - Message persistence
-
-- **Serialization**: 
-  - Message serialization/deserialization
-  - Format support (JSON, XML, Protobuf)
-  - Custom serializer integration
-
-- **BackgroundServices**: 
-  - Background processing services
-  - Message consumption and processing
-  - Outbox message handling
-  - Scheduled message processing
-
-#### 3. Events
-Event-driven architecture components:
-
-- **IEvent & Event**: 
-  - Base event structure
-  - Event sourcing infrastructure
-  - Event metadata management
-  - Event versioning support
-
-- **IEventHandler & EventProcessor**: 
-  - Event processing logic
-  - Event-driven architecture support
-  - Event processing pipeline
-  - Event routing and distribution
-
-- **External Events**: 
-  - Integration events for cross-service communication
-  - Event publishing and subscription
-  - Event correlation and tracking
-  - Distributed event handling
-
-#### 4. ContextExecutions
-Reliable database operations infrastructure:
-
-- **IDbContext**: 
-  - EF Core integration
-  - Transaction management
-  - Retry mechanisms
-  - Unit of Work pattern implementation
-  - Entity tracking and state management
-
-- **IRetryDbContextExecution**: 
-  - Automatic retry handling
-  - Transient fault handling
-  - Retry policies and strategies
-  - Circuit breaker pattern support
-
-- **ITxDbContextExecution**: 
-  - Transaction management
-  - Atomic operation guarantee
-  - Distributed transaction support
-  - Transaction isolation level control
-
-- **IDbFacadeResolver**: 
-  - Database facade resolution
-  - Low-level database operations
-  - Connection management
-  - Raw SQL execution support
-
-#### 5. CQRS
-Command Query Responsibility Segregation implementation:
-
-- **Command**: 
-  - Data modification operations
-  - Command validation
-  - Command handling pipeline
-  - Command result handling
-
-- **Query**: 
-  - Data retrieval operations
-  - Query optimization
-  - Caching support
-  - Query result mapping
-
-#### 6. Scheduler
-Task scheduling and management:
-
-- **IScheduler**: 
-  - Delayed task execution
-  - CRON-based recurring tasks
-  - Schedule management
-  - Task tracking and monitoring
-
-- **ICommandScheduler**: 
-  - Command scheduling
-  - Delayed command execution
-  - Recurring command scheduling
-  - Command execution tracking
-
-- **IQueryScheduler**: 
-  - Query scheduling
-  - Periodic data retrieval
-  - Report generation scheduling
-  - Query result caching
-
-### 🌟 Features
-
-1. **Loose Coupling**
-   - Minimized service dependencies
-   - Independent development and modification
-   - Interface-based design
-   - Plugin architecture support
-
-2. **Scalability**
-   - Asynchronous processing support
-   - Horizontal and vertical scaling compatibility
-   - Load balancing readiness
-   - Distributed processing support
-
-3. **Reliability**
-   - Message loss prevention
-   - Atomic operation guarantees
-   - Automatic retry mechanisms
-   - Circuit breaker patterns
-
-4. **Traceability**
-   - Unique message identifiers
-   - Correlation ID tracking
-   - Detailed logging infrastructure
-   - Distributed tracing support
-
-5. **Extensibility**
-   - Plugin system support
-   - Middleware architecture
-   - Customizable components
-   - Custom implementation support
-
-### 📚 Usage Examples
-
-1. **Order Processing**
-```csharp
-public class OrderCreatedMessage : IMessage
-{
-    public string OrderId { get; set; }
-    public decimal TotalAmount { get; set; }
-    public string CustomerId { get; set; }
-}
-
-public class OrderCreatedHandler : IMessageHandler<OrderCreatedMessage>
-{
-    public async Task HandleAsync(OrderCreatedMessage message, IMessageContext context)
-    {
-        // Order processing logic
-        // Inventory update
-        // Customer notification
-    }
-}
+```bash
+dotnet add package Core.Abstractions
+dotnet add package Core.Messaging.Transport.Kafka
 ```
 
-2. **Payment Processing**
-```csharp
-public class PaymentProcessedMessage : IMessage
-{
-    public string PaymentId { get; set; }
-    public string OrderId { get; set; }
-    public PaymentStatus Status { get; set; }
-}
-```
+> 📌 Make sure to check each package’s own `README.md` for detailed setup, configuration, and usage instructions.
 
-3. **Email Notification**
-```csharp
-public class SendEmailMessage : IMessage
-{
-    public string To { get; set; }
-    public string Subject { get; set; }
-    public string Body { get; set; }
-}
-```
+---
 
-### 🔧 Installation
+## 🧩 Design Principles
 
-```xml
-<PackageReference Include="Core.Abstractions" Version="1.0.0" />
-```
+- **Clean Architecture** - Ports & Adapters, Separation of Concerns  
+- **CQRS & Event-Driven** - Commands, Queries, Integration Events  
+- **Resilient by Design** - Retry, Circuit Breaker, Message Outbox  
+- **Open for Extension** - Plugin-like modularity  
+- **Cloud-Native Ready** - Service Discovery, Tracing, Health Checks
 
-### 📋 Requirements
+---
 
-- .NET 9.0
-- Entity Framework Core
-- MediatR
+## 💡 Example Use Cases
 
-### 🤝 Contributing
+- ✅ Schedule background jobs with Hangfire & PostgreSQL
+- ✅ Publish & consume integration events via Kafka or RabbitMQ
+- ✅ Enforce IP allow/deny rules with IPControlBehavior
+- ✅ Track request flow using distributed tracing (OpenTelemetry)
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+---
 
-### 📝 License
+## 💠 Testing
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
+Some packages like `Core.Messaging.InMemory` and `Core.Test` are optimized for unit/integration testing.
+
+---
+
+## 🛠 Requirements
+
+- [.NET 9.0 SDK](https://dotnet.microsoft.com/)
+- Docker (for Kafka/RabbitMQ/Postgres if needed)
+- MediatR, Polly, Newtonsoft.Json, etc.
+
+---
+
+## 👍 Contributing
+
+Feel free to contribute!
+
+1. Fork the repo
+2. Create a new branch
+3. Add or improve a package
+4. Submit a Pull Request
+
+---
+
+## 📜 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file.
+
+---
+
+> 📄 For internal use or enterprise support, you can contact the maintainers.
+
