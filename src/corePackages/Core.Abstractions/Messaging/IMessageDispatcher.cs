@@ -46,7 +46,7 @@ public interface IMessageDispatcher
     /// <param name="messageContext">The context containing metadata and state for message processing.</param>
     /// <param name="cancellationToken">Optional cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    Task DispatchAsync<TMessage>(
+    Task DispatchMultipleAsync<TMessage>(
         TMessage[] messages,
         IMessageContext messageContext,
         CancellationToken cancellationToken = default)

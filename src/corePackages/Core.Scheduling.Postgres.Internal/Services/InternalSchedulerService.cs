@@ -1,4 +1,5 @@
 ﻿using Ardalis.GuardClauses;
+using Core.Abstractions.CQRS.Command;
 using Core.Abstractions.Messaging;
 using Core.Abstractions.Messaging.Serialization;
 using Core.Scheduling.Postgres.Internal.Data;
@@ -116,7 +117,7 @@ public class InternalSchedulerService:IInternalSchedulerService
             string name = message.GetType().Name;
 
             var internalMessage = new InternalMessage(
-                message.Id,
+                message.MessageId,
                 message.OccurredOn,
                 message.MessageType,
                 name.Underscore(),
@@ -173,7 +174,7 @@ public class InternalSchedulerService:IInternalSchedulerService
                 _logger.LogInformation(
                     "Sent a message: '{Name}' with ID: '{Id} (internal-message store)'",
                     message.MessageType,
-                    message.Id);
+                    message.MessageId);
             }
             else
             {

@@ -4,5 +4,5 @@ namespace Core.Messaging.Transport.RabbitMQ;
 
 public interface IPublisherChannelFactory
 {
-    PublisherChannelContext Create(IIntegrationEvent message);
+    Task<PublisherChannelContext> CreateAsync(IIntegrationEvent message);
 }

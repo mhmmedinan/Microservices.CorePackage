@@ -1,7 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 using Confluent.Kafka;
 using Confluent.SchemaRegistry;
-using Confluent.SchemaRegistry.Serdes;
 using Core.Abstractions.Events.External;
 using Core.Abstractions.Messaging.Transport;
 using Microsoft.Extensions.Configuration;

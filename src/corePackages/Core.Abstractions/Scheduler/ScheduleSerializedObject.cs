@@ -20,17 +20,21 @@ public class ScheduleSerializedObject
     /// </summary>
     public string Data { get; set; }
 
+
+    public string Description { get; set; }
+
     /// <summary>
     /// Initializes a new instance of the <see cref="ScheduleSerializedObject"/> class.
     /// </summary>
     /// <param name="typeName">The type name of the scheduled object.</param>
     /// <param name="assemblyName">The assembly name containing the scheduled object type.</param>
     /// <param name="data">The serialized data of the scheduled object.</param>
-    public ScheduleSerializedObject(string typeName, string assemblyName, string data)
+    public ScheduleSerializedObject(string typeName, string assemblyName, string data,string description)
     {
         TypeName = typeName;
         AssemblyName = assemblyName;
         Data = data;
+        Description=description;
     }
 
     public override string ToString()

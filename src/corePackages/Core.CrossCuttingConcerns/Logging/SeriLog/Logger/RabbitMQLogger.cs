@@ -3,7 +3,6 @@ using Microsoft.Extensions.Configuration;
 using Serilog;
 using Serilog.Formatting.Json;
 using Serilog.Sinks.RabbitMQ;
-using Serilog.Sinks.RabbitMQ.Sinks.RabbitMQ;
 
 namespace Core.CrossCuttingConcerns.Logging.SeriLog.Logger;
 
@@ -16,27 +15,22 @@ public class RabbitMQLogger : LoggerServiceBase
             configuration.GetSection(configurationSection).Get<RabbitMQConfiguration>()
             ?? throw new NullReferenceException($"\"{configurationSection}\" section cannot found in configuration.");
 
-        RabbitMQClientConfiguration config =
-            new()
+        Logger = new LoggerConfiguration()
+            .WriteTo.RabbitMQ((clientConfiguration, sinkConfiguration) =>
             {
-                Port = rabbitMQConfiguration.Port,
-                DeliveryMode = RabbitMQDeliveryMode.Durable,
-                Exchange = rabbitMQConfiguration.Exchange,
-                Username = rabbitMQConfiguration.Username,
-                Password = rabbitMQConfiguration.Password,
-                ExchangeType = rabbitMQConfiguration.ExchangeType,
-                RouteKey = rabbitMQConfiguration.RouteKey
-            };
-        rabbitMQConfiguration.Hostnames.ForEach(config.Hostnames.Add);
+                clientConfiguration.Username = rabbitMQConfiguration.Username;
+                clientConfiguration.Password = rabbitMQConfiguration.Password;
+                clientConfiguration.Exchange = rabbitMQConfiguration.Exchange;
+                clientConfiguration.ExchangeType = rabbitMQConfiguration.ExchangeType;
+                clientConfiguration.DeliveryMode = RabbitMQDeliveryMode.Durable;
+                clientConfiguration.RoutingKey = rabbitMQConfiguration.RouteKey;
+                clientConfiguration.Port = rabbitMQConfiguration.Port;
 
-        Logger = new LoggerConfiguration().WriteTo
-            .RabbitMQ(
-                (clientConfiguration, sinkConfiguration) =>
-                {
-                    clientConfiguration.From(config);
-                    sinkConfiguration.TextFormatter = new JsonFormatter();
-                }
-            )
+              
+                rabbitMQConfiguration.Hostnames.ForEach(hostname => clientConfiguration.Hostnames.Add(hostname));
+
+                sinkConfiguration.TextFormatter = new JsonFormatter();
+            })
             .CreateLogger();
     }
 }

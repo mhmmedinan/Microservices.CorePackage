@@ -22,7 +22,8 @@
 /// <item>Caching</item>
 /// </list>
 /// </remarks>
-public interface IMessageMiddleware
+public interface IMessageMiddleware<TMessage>
+    where TMessage : IMessage
 {
     /// <summary>
     /// Handles the message processing in the middleware pipeline.
@@ -34,10 +35,9 @@ public interface IMessageMiddleware
     /// <param name="cancellationToken">Optional cancellation token.</param>
     /// <param name="next">The delegate to the next middleware in the pipeline.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    Task HandleAsync<TMessage>(
+    Task HandleAsync(
         TMessage message,
         IMessageContext messageContext,
         CancellationToken cancellationToken,
-        HandleMessageDelegate<TMessage> next)
-        where TMessage : IMessage;
+        HandleMessageDelegate<TMessage> next);
 }

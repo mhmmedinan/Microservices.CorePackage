@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using Core.Scheduling.SqlServer.Internal.Data;
 using Microsoft.EntityFrameworkCore;
 using Humanizer;
+using Core.Abstractions.CQRS.Command;
 
 namespace Core.Scheduling.SqlServer.Internal.Services;
 
@@ -91,7 +92,7 @@ public class InternalSchedulerService : IInternalSchedulerService
                 _logger.LogInformation(
                     "Sent a message: '{Name}' with ID: '{Id} (internal-message store)'",
                     message.MessageType,
-                    message.Id);
+                    message.MessageId);
             }
             else
             {
@@ -168,7 +169,7 @@ public class InternalSchedulerService : IInternalSchedulerService
             string name = message.GetType().Name;
 
             var internalMessage = new InternalMessage(
-                message.Id,
+                message.MessageId,
                 message.OccurredOn,
                 message.MessageType,
                 name.Underscore(),

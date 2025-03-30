@@ -10,7 +10,7 @@ public interface IPublisherChannelContextPool
     /// </summary>
     /// <param name="references">The queue references for the channel.</param>
     /// <returns>A publisher channel context.</returns>
-    PublisherChannelContext Get(QueueReferences references);
+    Task<PublisherChannelContext> GetAsync(QueueReferences references);
 
     /// <summary>
     /// Returns a channel context to the pool.

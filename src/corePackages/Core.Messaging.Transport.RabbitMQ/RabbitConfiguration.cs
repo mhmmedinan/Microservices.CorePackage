@@ -29,4 +29,6 @@ public class RabbitConfiguration
     /// Gets or sets the delay between retry attempts when connecting to RabbitMQ.
     /// </summary>
     public TimeSpan RetryDelay { get; set; }
+
+
 }

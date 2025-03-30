@@ -1,4 +1,6 @@
-﻿namespace Core.Abstractions.Scheduler;
+﻿using Core.Abstractions.CQRS.Command;
+
+namespace Core.Abstractions.Scheduler;
 
 /// <summary>
 /// Defines the contract for scheduling and managing scheduled tasks.
@@ -45,6 +47,7 @@ public interface IScheduler : ICommandScheduler, IMessageScheduler
         ScheduleSerializedObject scheduleSerializedObject,
         TimeSpan delay,
         string? description = null);
+
 
     /// <summary>
     /// Schedules a recurring task using a CRON expression.

@@ -1,4 +1,5 @@
-﻿using Core.Abstractions.Scheduler;
+﻿using Core.Abstractions.CQRS.Command;
+using Core.Abstractions.Scheduler;
 using Hangfire;
 
 namespace Core.Scheduling.Hangfire.Scheduler;

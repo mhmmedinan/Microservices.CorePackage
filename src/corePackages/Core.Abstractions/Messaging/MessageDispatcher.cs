@@ -11,7 +11,7 @@ public class MessageDispatcher : IMessageDispatcher
         _serviceProvider = serviceProvider;
     }
 
-    public async Task DispatchMessageAsync<TMessage>(
+    public async Task DispatchAsync<TMessage>(
         TMessage message,
         IMessageContext messageContext = null,
         CancellationToken cancellationToken = default)
@@ -21,6 +21,18 @@ public class MessageDispatcher : IMessageDispatcher
         var messageProcessor = scope.ServiceProvider.GetRequiredService<IMessageProcessor>();
 
         await messageProcessor.ProcessAsync(message, messageContext, cancellationToken);
+    }
+
+    public async Task DispatchMultipleAsync<TMessage>(
+    TMessage[] messages,
+    IMessageContext messageContext,
+    CancellationToken cancellationToken = default)
+    where TMessage : IMessage
+    {
+        foreach (var message in messages)
+        {
+            await DispatchAsync(message, messageContext, cancellationToken);
+        }
     }
 }
 

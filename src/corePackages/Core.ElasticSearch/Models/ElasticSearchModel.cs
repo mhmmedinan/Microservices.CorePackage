@@ -26,7 +26,7 @@ public class ElasticSearchModel
         ElasticId = string.Empty;
     }
 
-    public ElasticSearchModel(Id elasticId, string indexName)
+    public ElasticSearchModel(string elasticId, string indexName)
     {
         ElasticId = elasticId;
         IndexName = indexName;

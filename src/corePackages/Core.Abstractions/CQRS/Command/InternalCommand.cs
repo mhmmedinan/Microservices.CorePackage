@@ -1,4 +1,6 @@
-﻿public abstract record InternalCommand : IInternalCommand
+﻿using Core.Abstractions.CQRS.Command;
+
+public abstract record InternalCommand : IInternalCommand
 {
     public Guid Id { get; protected set; } = Guid.NewGuid();
 

@@ -27,40 +27,13 @@ public class IPControlBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest
 
         bool isWhitelisted = settings.WhiteList?.Contains(clientIP) ?? false;
         bool isBlacklisted = settings.BlackList?.Contains(clientIP) ?? false;
-        bool isInAllowedRange = IsIPInRange(clientIP, settings.AllowedRanges);
 
-        if (isBlacklisted || (!isWhitelisted && !isInAllowedRange))
+        if (isBlacklisted || (!isWhitelisted))
             throw new BusinessException($"Access denied for IP: {clientIP}");
 
         var response = await next();
         return response;
     }
 
-    private bool IsIPInRange(string ip, List<string>? allowedRanges)
-    {
-        if (allowedRanges == null || !allowedRanges.Any())
-            return false;
-
-        var ipParts = ip.Split('.').Select(int.Parse).ToArray();
-
-        foreach (var range in allowedRanges)
-        {
-            var rangeParts = range.Split('/');
-            var networkAddress = rangeParts[0].Split('.').Select(int.Parse).ToArray();
-            var subnetMask = rangeParts.Length > 1 ? int.Parse(rangeParts[1]) : 32;
-
-            bool match = true;
-            for (int i = 0; i < 4 && match; i++)
-            {
-                int mask = subnetMask >= 8 ? 255 : (subnetMask <= 0 ? 0 : (255 << (8 - subnetMask)));
-                match = (ipParts[i] & mask) == (networkAddress[i] & mask);
-                subnetMask -= 8;
-            }
-
-            if (match)
-                return true;
-        }
-
-        return false;
-    }
+   
 }

@@ -19,7 +19,7 @@ public interface IMessage
     /// Gets the unique identifier for the message.
     /// Used for message tracking, deduplication, and correlation.
     /// </summary>
-    string MessageId { get; }
+    Guid MessageId { get; }
 
     /// <summary>
     /// Gets the correlation identifier for the message.
@@ -37,4 +37,9 @@ public interface IMessage
     /// Used for message routing and handling.
     /// </summary>
     string MessageType { get; }
+
+    /// <summary>
+    /// Gets the date the message occurred.
+    /// </summary>
+    public DateTime OccurredOn { get; set; }
 }

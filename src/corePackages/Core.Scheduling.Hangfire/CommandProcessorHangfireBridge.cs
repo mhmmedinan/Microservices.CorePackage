@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿using Core.Abstractions.CQRS.Command;
+using MediatR;
 using System.ComponentModel;
 
 namespace Core.Scheduling.Hangfire;

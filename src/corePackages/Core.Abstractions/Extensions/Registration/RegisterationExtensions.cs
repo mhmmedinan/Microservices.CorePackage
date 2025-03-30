@@ -2,254 +2,138 @@
 
 namespace Core.Abstractions.Extensions.Registration;
 
-public static class RegisterationExtensions
+/// <summary>
+/// Provides extension methods to simplify service registration operations for IServiceCollection.
+/// </summary>
+public static class RegistrationExtensions
 {
+    /// <summary>
+    /// Removes a registered service of type <typeparamref name="TService"/> from the service collection.
+    /// </summary>
+    /// <typeparam name="TService">The type of the service to remove.</typeparam>
+    /// <param name="services">The service collection.</param>
     public static void Unregister<TService>(this IServiceCollection services)
     {
         var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(TService));
-        services.Remove(descriptor);
+        if (descriptor != null)
+            services.Remove(descriptor);
     }
 
+    /// <summary>
+    /// Replaces an existing service registration with a new implementation type.
+    /// </summary>
+    /// <typeparam name="TService">The service type to replace.</typeparam>
+    /// <typeparam name="TImplementation">The new implementation type.</typeparam>
+    /// <param name="services">The service collection.</param>
+    /// <param name="lifetime">The desired service lifetime.</param>
     public static void Replace<TService, TImplementation>(
         this IServiceCollection services,
         ServiceLifetime lifetime)
-    {
-        services.Unregister<TService>();
-        services.Add(new ServiceDescriptor(typeof(TService), typeof(TImplementation), lifetime));
-    }
-
-    private static void TryAddTransientExact(
-        this IServiceCollection services,
-        Type serviceType,
-        Type implementationType)
-    {
-        if (services.Any(reg => reg.ServiceType == serviceType && reg.ImplementationType == implementationType)) return;
-
-        services.AddTransient(serviceType, implementationType);
-    }
-
-    private static void TryAddScopeExact(
-        this IServiceCollection services,
-        Type serviceType,
-        Type implementationType)
-    {
-        if (services.Any(reg => reg.ServiceType == serviceType && reg.ImplementationType == implementationType)) return;
-
-        services.AddScoped(serviceType, implementationType);
-    }
-
-    private static void TryAddSingletonExact(
-        this IServiceCollection services,
-        Type serviceType,
-        Type implementationType)
-    {
-        if (services.Any(reg => reg.ServiceType == serviceType && reg.ImplementationType == implementationType)) return;
-
-        services.AddSingleton(serviceType, implementationType);
-    }
-
-    public static void ReplaceScoped<TService, TImplementation>(this IServiceCollection services)
         where TService : class
         where TImplementation : class, TService
     {
         services.Unregister<TService>();
-        services.AddScoped<TService, TImplementation>();
+        services.Add(typeof(TService), typeof(TImplementation), lifetime);
     }
 
-    public static void ReplaceScoped<TService>(
-        this IServiceCollection services,
-        Func<IServiceProvider, TService> implementationFactory)
-        where TService : class
-    {
-        services.Unregister<TService>();
-        services.AddScoped(implementationFactory);
-    }
-
-    public static void ReplaceTransient<TService, TImplementation>(this IServiceCollection services)
-        where TService : class
-        where TImplementation : class, TService
-    {
-        services.Unregister<TService>();
-        services.AddTransient<TService, TImplementation>();
-    }
-
-    public static void ReplaceTransient<TService>(
-        this IServiceCollection services,
-        Func<IServiceProvider, TService> implementationFactory)
-        where TService : class
-    {
-        services.Unregister<TService>();
-        services.AddTransient(implementationFactory);
-    }
-
-    public static void ReplaceSingleton<TService, TImplementation>(this IServiceCollection services)
-        where TService : class
-        where TImplementation : class, TService
-    {
-        services.Unregister<TService>();
-        services.AddSingleton<TService, TImplementation>();
-    }
-
-    public static void ReplaceSingleton<TService>(
-        this IServiceCollection services,
-        Func<IServiceProvider, TService> implementationFactory)
-        where TService : class
-    {
-        services.Unregister<TService>();
-        services.AddSingleton(implementationFactory);
-    }
-
-    public static IServiceCollection Add<TService, TImplementation>(
-        this IServiceCollection services,
-        Func<IServiceProvider, TImplementation> implementationFactory,
-        ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
-        where TService : class
-        where TImplementation : class, TService
-    {
-        switch (serviceLifetime)
-        {
-            case ServiceLifetime.Singleton:
-                return services.AddSingleton<TService, TImplementation>(implementationFactory);
-
-            case ServiceLifetime.Scoped:
-                return services.AddScoped<TService, TImplementation>(implementationFactory);
-
-            case ServiceLifetime.Transient:
-                return services.AddTransient<TService, TImplementation>(implementationFactory);
-
-            default:
-                throw new ArgumentNullException(nameof(serviceLifetime));
-        }
-    }
-
-    public static IServiceCollection Add<TService>(
-        this IServiceCollection services,
-        Func<IServiceProvider, TService> implementationFactory,
-        ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
-        where TService : class
-    {
-        switch (serviceLifetime)
-        {
-            case ServiceLifetime.Singleton:
-                return services.AddSingleton(implementationFactory);
-
-            case ServiceLifetime.Scoped:
-                return services.AddScoped(implementationFactory);
-
-            case ServiceLifetime.Transient:
-                return services.AddTransient(implementationFactory);
-
-            default:
-                throw new ArgumentNullException(nameof(serviceLifetime));
-        }
-    }
-
-    public static IServiceCollection Add<TService>(
-        this IServiceCollection services,
-        ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
-        where TService : class
-    {
-        switch (serviceLifetime)
-        {
-            case ServiceLifetime.Singleton:
-                return services.AddSingleton<TService>();
-
-            case ServiceLifetime.Scoped:
-                return services.AddScoped<TService>();
-
-            case ServiceLifetime.Transient:
-                return services.AddTransient<TService>();
-
-            default:
-                throw new ArgumentNullException(nameof(serviceLifetime));
-        }
-    }
-
-    public static IServiceCollection Add(
-        this IServiceCollection services,
-        Type serviceType,
-        ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
-    {
-        switch (serviceLifetime)
-        {
-            case ServiceLifetime.Singleton:
-                return services.AddSingleton(serviceType);
-
-            case ServiceLifetime.Scoped:
-                return services.AddScoped(serviceType);
-
-            case ServiceLifetime.Transient:
-                return services.AddTransient(serviceType);
-
-            default:
-                throw new ArgumentNullException(nameof(serviceLifetime));
-        }
-    }
-
-    public static IServiceCollection Add<TService, TImplementation>(
-        this IServiceCollection services,
-        ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
-        where TService : class
-        where TImplementation : class, TService
-    {
-        switch (serviceLifetime)
-        {
-            case ServiceLifetime.Singleton:
-                return services.AddSingleton<TService, TImplementation>();
-
-            case ServiceLifetime.Scoped:
-                return services.AddScoped<TService, TImplementation>();
-
-            case ServiceLifetime.Transient:
-                return services.AddTransient<TService, TImplementation>();
-
-            default:
-                throw new ArgumentNullException(nameof(serviceLifetime));
-        }
-    }
-
-    public static IServiceCollection Add(
-        this IServiceCollection services,
-        Type serviceType,
-        Func<IServiceProvider, object> implementationFactory,
-        ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
-    {
-        switch (serviceLifetime)
-        {
-            case ServiceLifetime.Singleton:
-                return services.AddSingleton(serviceType, implementationFactory);
-
-            case ServiceLifetime.Scoped:
-                return services.AddScoped(serviceType, implementationFactory);
-
-            case ServiceLifetime.Transient:
-                return services.AddTransient(serviceType, implementationFactory);
-
-            default:
-                throw new ArgumentNullException(nameof(serviceLifetime));
-        }
-    }
-
+    /// <summary>
+    /// Registers a service type and its implementation with a specified lifetime.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="serviceType">The type of service.</param>
+    /// <param name="implementationType">The implementation type.</param>
+    /// <param name="lifetime">The service lifetime.</param>
     public static IServiceCollection Add(
         this IServiceCollection services,
         Type serviceType,
         Type implementationType,
-        ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
+        ServiceLifetime lifetime)
     {
-        switch (serviceLifetime)
-        {
-            case ServiceLifetime.Singleton:
-                return services.AddSingleton(serviceType, implementationType);
+        var descriptor = new ServiceDescriptor(serviceType, implementationType, lifetime);
+        services.Add(descriptor);
+        return services;
+    }
 
-            case ServiceLifetime.Scoped:
-                return services.AddScoped(serviceType, implementationType);
+    /// <summary>
+    /// Registers a service and implementation with a specified lifetime.
+    /// </summary>
+    /// <typeparam name="TService">The service type.</typeparam>
+    /// <typeparam name="TImplementation">The implementation type.</typeparam>
+    /// <param name="services">The service collection.</param>
+    /// <param name="lifetime">The service lifetime (default: transient).</param>
+    public static IServiceCollection Add<TService, TImplementation>(
+        this IServiceCollection services,
+        ServiceLifetime lifetime = ServiceLifetime.Transient)
+        where TService : class
+        where TImplementation : class, TService
+    {
+        return services.Add(typeof(TService), typeof(TImplementation), lifetime);
+    }
 
-            case ServiceLifetime.Transient:
-                return services.AddTransient(serviceType, implementationType);
+    /// <summary>
+    /// Registers a service with itself as implementation type and specified lifetime.
+    /// </summary>
+    /// <typeparam name="TService">The type of service to register.</typeparam>
+    /// <param name="services">The service collection.</param>
+    /// <param name="lifetime">The service lifetime (default: transient).</param>
+    public static IServiceCollection Add<TService>(
+        this IServiceCollection services,
+        ServiceLifetime lifetime = ServiceLifetime.Transient)
+        where TService : class
+    {
+        return services.Add(typeof(TService), typeof(TService), lifetime);
+    }
 
-            default:
-                throw new ArgumentNullException(nameof(serviceLifetime));
-        }
+    /// <summary>
+    /// Registers a service using a factory method and specified lifetime.
+    /// </summary>
+    /// <typeparam name="TService">The type of service.</typeparam>
+    /// <param name="services">The service collection.</param>
+    /// <param name="implementationFactory">A factory to create the service instance.</param>
+    /// <param name="lifetime">The desired lifetime (default: transient).</param>
+    public static IServiceCollection Add<TService>(
+        this IServiceCollection services,
+        Func<IServiceProvider, TService> implementationFactory,
+        ServiceLifetime lifetime = ServiceLifetime.Transient)
+        where TService : class
+    {
+        var descriptor = new ServiceDescriptor(typeof(TService), implementationFactory, lifetime);
+        services.Add(descriptor);
+        return services;
+    }
+
+    /// <summary>
+    /// Registers a service using a factory method and specified lifetime.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="serviceType">The type of service.</param>
+    /// <param name="implementationFactory">A factory to create the service instance.</param>
+    /// <param name="lifetime">The desired lifetime (default: transient).</param>
+    public static IServiceCollection Add(
+        this IServiceCollection services,
+        Type serviceType,
+        Func<IServiceProvider, object> implementationFactory,
+        ServiceLifetime lifetime = ServiceLifetime.Transient)
+    {
+        var descriptor = new ServiceDescriptor(serviceType, implementationFactory, lifetime);
+        services.Add(descriptor);
+        return services;
+    }
+
+    /// <summary>
+    /// Replaces an existing service registration using a factory method.
+    /// </summary>
+    /// <typeparam name="TService">The service type to replace.</typeparam>
+    /// <param name="services">The service collection.</param>
+    /// <param name="implementationFactory">A factory to create the service instance.</param>
+    /// <param name="lifetime">The desired lifetime.</param>
+    public static void Replace<TService>(
+        this IServiceCollection services,
+        Func<IServiceProvider, TService> implementationFactory,
+        ServiceLifetime lifetime)
+        where TService : class
+    {
+        services.Unregister<TService>();
+        services.Add(implementationFactory, lifetime);
     }
 }
-

@@ -1,4 +1,5 @@
-﻿using Core.Abstractions.Messaging;
+﻿using Core.Abstractions.CQRS.Command;
+using Core.Abstractions.Messaging;
 
 namespace Core.Scheduling.Postgres.Internal.Services;
 

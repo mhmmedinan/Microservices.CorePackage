@@ -45,7 +45,7 @@ public class KafkaConsumerConfig : ConsumerConfig
     /// </summary>
     public KafkaConsumerConfig()
     {
-        AutoOffsetReset = AutoOffsetReset.Earliest;
+        AutoOffsetReset = Confluent.Kafka.AutoOffsetReset.Earliest;
         EnableAutoOffsetStore = false;
         EnableAutoCommit = false;
         AllowAutoCreateTopics = true;

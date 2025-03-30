@@ -1,5 +1,4 @@
 ﻿using MediatR;
-using Core.CrossCuttingConcerns.Utilities.Results;
 
 namespace Core.Abstractions.CQRS.Command;
 

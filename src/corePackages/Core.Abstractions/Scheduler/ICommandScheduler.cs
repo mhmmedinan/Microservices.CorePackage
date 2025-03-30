@@ -1,5 +1,5 @@
-﻿using System.Linq.Expressions;
-using Core.Abstractions.CQRS.Command;
+﻿using Core.Abstractions.CQRS.Command;
+using System.Linq.Expressions;
 
 namespace Core.Abstractions.Scheduler;
 
@@ -36,7 +36,7 @@ public interface ICommandScheduler
     Task ScheduleAsync<TCommand>(
         TCommand command,
         DateTimeOffset scheduleAt,
-        string? description = null)
+        string? description = null, CancellationToken cancellationToken=default)
         where TCommand : ICommand;
 
     /// <summary>
@@ -50,7 +50,7 @@ public interface ICommandScheduler
     Task ScheduleAsync<TCommand>(
         TCommand command,
         TimeSpan delay,
-        string? description = null)
+        string? description = null, CancellationToken cancellationToken = default)
         where TCommand : ICommand;
 
     /// <summary>
@@ -66,7 +66,22 @@ public interface ICommandScheduler
         TCommand command,
         string name,
         string cronExpression,
-        string? description = null)
+        string? description = null, CancellationToken cancellationToken = default)
         where TCommand : ICommand;
+
+    Task ScheduleAsync(
+        Expression<Func<Task>> methodCall,
+        DateTime scheduleAt,
+        string? description = null,
+        CancellationToken cancellationToken = default);
+
+    Task ScheduleAsync(
+    IInternalCommand[] internalCommands,
+    CancellationToken cancellationToken = default);
+
+    Task ScheduleAsync(
+    IInternalCommand internalCommand,
+    CancellationToken cancellationToken = default);
+
 }
 

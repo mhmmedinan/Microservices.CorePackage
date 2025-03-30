@@ -7,7 +7,6 @@ using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Reflection;
-using IModel = RabbitMQ.Client.IModel;
 
 namespace Core.Messaging.Transport.RabbitMQ.Consumers;
 
@@ -21,7 +20,7 @@ public class RabbitMQConsumer : IEventBusSubscriber
     private readonly ILogger<RabbitMQConsumer> _logger; 
     private readonly RabbitConfiguration _rabbitConfiguration;
     private readonly IServiceProvider _serviceProvider;
-    private readonly List<IModel> _channels = new();
+    private readonly List<IChannel> _channels = new();
 
     /// <summary>
     /// Initializes a new instance of the RabbitMQConsumer class.
@@ -51,98 +50,116 @@ public class RabbitMQConsumer : IEventBusSubscriber
     /// </summary>
     /// <param name="cancellationToken">Cancellation token for stopping the consumer.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public Task StartAsync(CancellationToken cancellationToken = default)
+    public async Task StartAsync(CancellationToken cancellationToken = default)
     {
         var messageTypes = AppDomain.CurrentDomain.GetAssemblies().GetHandledIntegrationEventTypes();
         var factory = _serviceProvider.GetRequiredService<IQueueReferenceFactory>();
 
-        foreach(var messageType in messageTypes)
+        foreach (var messageType in messageTypes)
         {
-            // https://www.davidguida.net/dynamic-method-invocation-with-net-core/
-            // https://www.thereformedprogrammer.net/using-net-generics-with-a-type-derived-at-runtime/
             MethodInfo methodInfo = typeof(IQueueReferenceFactory).GetMethod("Create");
             MethodInfo generic = methodInfo.MakeGenericMethod(messageType);
 
             var queueReferences = generic.Invoke(factory, new object[] { null }) as QueueReferences;
-            var channel = InitChannel(queueReferences);
+            var channel = await InitChannelAsync(queueReferences);
             _channels.Add(channel);
-            InitSubscription(queueReferences, channel);
+            await InitSubscriptionAsync(queueReferences, channel);
         }
-        return Task.CompletedTask;
     }
+
 
     /// <summary>
     /// Stops the consumer and closes all channels.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token for stopping the consumer.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public Task StopAsync(CancellationToken cancellationToken = default)
+    public async Task StopAsync(CancellationToken cancellationToken = default)
     {
-        _channels.ForEach(StopChannel);
-        return Task.CompletedTask;
+        foreach (var channel in _channels)
+        {
+            await StopChannelAsync(channel);
+        }
     }
+
+
+    /// <summary>
+    /// Disposes the consumer and releases all resources.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        foreach (var channel in _channels)
+        {
+            await StopChannelAsync(channel);
+        }
+    }
+
+
 
     /// <summary>
     /// Initializes a subscription for a specific queue.
     /// </summary>
     /// <param name="queueReferences">Queue reference information.</param>
     /// <param name="channel">The RabbitMQ channel.</param>
-    private void InitSubscription(QueueReferences queueReferences, IModel channel)
+    private async Task InitSubscriptionAsync(QueueReferences queueReferences, IChannel channel)
     {
         var consumer = new AsyncEventingBasicConsumer(channel);
+        consumer.ReceivedAsync += OnMessageReceivedAsync;
 
-        consumer.Received += OnMessageReceivedAsync;
+        _logger.LogInformation("Initializing subscription on queue '{QueueName}'...", queueReferences.QueueName);
 
-        _logger.LogInformation($"initializing subscription on queue '{queueReferences.QueueName}' ...");
-        channel.BasicConsume(queue: queueReferences.QueueName, autoAck: false, consumer: consumer);
+        await channel.BasicConsumeAsync(queue: queueReferences.QueueName, autoAck: false, consumer: consumer);
     }
+
 
     /// <summary>
     /// Initializes a channel with the specified queue configuration.
     /// </summary>
     /// <param name="queueReferences">Queue reference information.</param>
     /// <returns>The initialized RabbitMQ channel.</returns>
-    private IModel InitChannel(QueueReferences queueReferences)
+    private async Task<IChannel> InitChannelAsync(QueueReferences queueReferences)
     {
-        var channel = _connection.CreateChannel();
+        var channel = await _connection.CreateChannelAsync();
 
         _logger.LogInformation(
-            $"initializing queue '{queueReferences.QueueName}' on exchange '{queueReferences.ExchangeName}'...");
+            "Initializing queue '{QueueName}' on exchange '{ExchangeName}'...",
+            queueReferences.QueueName, queueReferences.ExchangeName);
 
-        channel.ExchangeDeclare(exchange: queueReferences.ExchangeName, type: ExchangeType.Topic);
-        channel.QueueDeclare(queue: queueReferences.QueueName,
+        await channel.ExchangeDeclareAsync(exchange: queueReferences.ExchangeName, type: ExchangeType.Topic);
+        _ = await channel.QueueDeclareAsync(queue: queueReferences.QueueName,
             durable: true,
             exclusive: false,
             autoDelete: false,
-            arguments: new Dictionary<string, object>()
+            arguments: new Dictionary<string, object>
             {
-                { Headers.XDeadLetterExchange, queueReferences.DeadLetterExchangeName },
-                { Headers.XDeadLetterRoutingKey, queueReferences.DeadLetterQueue }
+            { Headers.XDeadLetterExchange, queueReferences.DeadLetterExchangeName },
+            { Headers.XDeadLetterRoutingKey, queueReferences.DeadLetterQueue }
             });
-        channel.QueueBind(queue: queueReferences.QueueName,
+
+        await channel.QueueBindAsync(queue: queueReferences.QueueName,
             exchange: queueReferences.ExchangeName,
             routingKey: queueReferences.RoutingKey,
             arguments: null);
 
-        channel.CallbackException += OnChannelException;
+        channel.CallbackExceptionAsync += OnChannelExceptionAsync;
 
         return channel;
     }
 
+
     /// <summary>
     /// Handles channel exceptions.
     /// </summary>
-    /// <param name="_">Sender object (unused).</param>
-    /// <param name="ea">Exception event arguments.</param>
-    private void OnChannelException(object _, CallbackExceptionEventArgs ea)
+    /// <param name="args">CallbackExceptionEventArgs event arguments.</param>
+    private Task OnChannelExceptionAsync(object sender, CallbackExceptionEventArgs args)
     {
-        _logger.LogError(ea.Exception, "the RabbitMQ Channel has encountered an error: {ExceptionMessage}",
-            ea.Exception.Message);
+        _logger.LogError(args.Exception,
+            "RabbitMQ channel encountered an exception: {Message}",
+            args.Exception.Message);
 
-        // TODO --> Provide argument
-        // InitChannel();
-        // InitSubscription();
+        return Task.CompletedTask;
     }
+
+
 
     /// <summary>
     /// Handles received messages asynchronously.
@@ -152,45 +169,47 @@ public class RabbitMQConsumer : IEventBusSubscriber
     /// <returns>A task representing the asynchronous operation.</returns>
     private async Task OnMessageReceivedAsync(object sender, BasicDeliverEventArgs eventArgs)
     {
-        var consumer = sender as IBasicConsumer;
-        var channel = consumer.Model;
+        var consumer = sender as AsyncEventingBasicConsumer;
+        var channel = consumer?.Channel;
 
         IIntegrationEvent message;
         try
         {
             message = _messageParser.Resolve(eventArgs.BasicProperties, eventArgs.Body.ToArray());
         }
-        catch (System.Exception ex)
+        catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "an exception has occured while decoding queue message from Exchange '{ExchangeName}', message cannot be parsed. Error: {ExceptionMessage}",
+            _logger.LogError(ex,
+                "Error decoding queue message from Exchange '{ExchangeName}': {ExceptionMessage}",
                 eventArgs.Exchange,
                 ex.Message);
-            channel.BasicReject(eventArgs.DeliveryTag, requeue: false);
+
+            if (channel != null)
+                await channel.BasicRejectAsync(eventArgs.DeliveryTag, requeue: false);
 
             return;
         }
 
         _logger.LogInformation(
-            "received message '{MessageId}' from Exchange '{ExchangeName}''. Processing...",
+            "Received message '{MessageId}' from Exchange '{ExchangeName}'. Processing...",
             eventArgs.BasicProperties.MessageId,
             eventArgs.Exchange);
+
         try
         {
             using var scope = _serviceProvider.CreateScope();
             var eventProcessor = scope.ServiceProvider.GetRequiredService<IEventProcessor>();
 
-            // Publish to internal event bus
-            await eventProcessor.DispatchAsync(message, default).ConfigureAwait(false);
-
-            channel.BasicAck(eventArgs.DeliveryTag, multiple: false);
+            await eventProcessor.DispatchAsync(message, default);
+            await channel.BasicAckAsync(eventArgs.DeliveryTag, multiple: false);
         }
-        catch (System.Exception ex)
+        catch (Exception ex)
         {
-            HandleConsumerException(ex, eventArgs, channel, message);
+            await HandleConsumerExceptionAsync(ex, eventArgs, channel, message);
         }
     }
+
+
 
     /// <summary>
     /// Handles consumer exceptions during message processing.
@@ -199,44 +218,38 @@ public class RabbitMQConsumer : IEventBusSubscriber
     /// <param name="deliveryProps">Delivery properties of the message.</param>
     /// <param name="channel">The RabbitMQ channel.</param>
     /// <param name="message">The integration event being processed.</param>
-    private void HandleConsumerException(
-       System.Exception ex,
-       BasicDeliverEventArgs deliveryProps,
-       IModel channel,
-       IIntegrationEvent message)
+    private async Task HandleConsumerExceptionAsync(
+    Exception ex,
+    BasicDeliverEventArgs deliveryProps,
+    IChannel channel,
+    IIntegrationEvent message)
     {
         _logger.LogWarning(
-            "an error has occurred while processing Message '{MessageId}' from Exchange '{ExchangeName}' : {ExceptionMessage}",
+            "Error processing message '{MessageId}' from Exchange '{ExchangeName}': {ExceptionMessage}",
             message.EventId,
             deliveryProps.Exchange,
             ex.Message);
 
-        channel.BasicReject(deliveryProps.DeliveryTag, requeue: false);
+        await channel.BasicRejectAsync(deliveryProps.DeliveryTag, requeue: false);
     }
+
 
     /// <summary>
     /// Stops and disposes a channel.
     /// </summary>
     /// <param name="channel">The channel to stop.</param>
-    private void StopChannel(IModel channel)
+    private async Task StopChannelAsync(IChannel channel)
     {
         if (channel is null)
             return;
 
-        channel.CallbackException -= OnChannelException;
+        channel.CallbackExceptionAsync -= OnChannelExceptionAsync;
 
         if (channel.IsOpen)
-            channel.Close();
+            await channel.CloseAsync();
 
         channel.Dispose();
-        channel = null;
     }
 
-    /// <summary>
-    /// Disposes the consumer and releases all resources.
-    /// </summary>
-    public void Dispose()
-    {
-        _channels.ForEach(StopChannel);
-    }
+
 }

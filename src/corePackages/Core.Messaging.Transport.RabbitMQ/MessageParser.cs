@@ -34,7 +34,7 @@ public class MessageParser : IMessageParser
     /// <returns>The resolved integration event.</returns>
     /// <exception cref="ArgumentNullException">Thrown when basicProperties or body is null.</exception>
     /// <exception cref="ArgumentException">Thrown when message type is invalid or cannot be resolved.</exception>
-    public IIntegrationEvent Resolve(IBasicProperties basicProperties, byte[] body)
+    public IIntegrationEvent Resolve(IReadOnlyBasicProperties basicProperties, byte[] body)
     {
         if (basicProperties is null)
             throw new ArgumentNullException(nameof(basicProperties));

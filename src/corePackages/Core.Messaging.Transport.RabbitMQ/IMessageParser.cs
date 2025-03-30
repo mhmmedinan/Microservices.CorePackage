@@ -14,5 +14,5 @@ public interface IMessageParser
     /// <param name="basicProperties">The message properties.</param>
     /// <param name="body">The message body as a byte array.</param>
     /// <returns>The resolved integration event.</returns>
-    IIntegrationEvent Resolve(IBasicProperties basicProperties, byte[] body);
+    IIntegrationEvent Resolve(IReadOnlyBasicProperties basicProperties, byte[] body);
 }

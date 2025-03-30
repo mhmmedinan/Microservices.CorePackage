@@ -1,6 +1,6 @@
 ﻿using Ardalis.GuardClauses;
+using Core.Abstractions.CQRS.Command;
 using Core.Abstractions.Messaging;
-using Core.Abstractions.Messaging.Serialization;
 using Core.Abstractions.Scheduler;
 using Core.Scheduling.Postgres.Internal.Services;
 using Microsoft.Extensions.Logging;
@@ -9,7 +9,7 @@ using System.Linq.Expressions;
 
 namespace Core.Scheduling.Postgres.Internal;
 
-public class InternalScheduler : ICommandScheduler, IMessageScheduler, IScheduler
+public class InternalScheduler : IScheduler
 {
     private readonly InternalMessageSchedulerOptions _options;
     private readonly ILogger<InternalScheduler> _logger;
@@ -18,8 +18,7 @@ public class InternalScheduler : ICommandScheduler, IMessageScheduler, ISchedule
     public InternalScheduler(
         IOptions<InternalMessageSchedulerOptions> options,
         ILogger<InternalScheduler> logger,
-        IInternalSchedulerService schedulerService,
-        IMessageSerializer messageSerializer
+        IInternalSchedulerService schedulerService
     )
     {
         _options = options.Value;
@@ -97,6 +96,51 @@ public class InternalScheduler : ICommandScheduler, IMessageScheduler, ISchedule
     }
 
     public Task ScheduleAsync(Expression<Func<Task>> methodCall, DateTime scheduleAt, string? description = null)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task RemoveScheduleAsync(string scheduleId)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<bool> ExistsAsync(string scheduleId)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task ScheduleAsync<TCommand>(TCommand command, DateTimeOffset scheduleAt, string? description = null, CancellationToken cancellationToken = default) where TCommand : ICommand
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task ScheduleAsync<TCommand>(TCommand command, TimeSpan delay, string? description = null, CancellationToken cancellationToken = default) where TCommand : ICommand
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task ScheduleRecurringAsync<TCommand>(TCommand command, string name, string cronExpression, string? description = null, CancellationToken cancellationToken = default) where TCommand : ICommand
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task ScheduleAsync(Expression<Func<Task>> methodCall, DateTime scheduleAt, string? description = null, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task ScheduleAsync<TMessage>(TMessage message, DateTimeOffset scheduleAt, string? description = null) where TMessage : IMessage
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task ScheduleAsync<TMessage>(TMessage message, TimeSpan delay, string? description = null) where TMessage : IMessage
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task ScheduleRecurringAsync<TMessage>(TMessage message, string name, string cronExpression, string? description = null) where TMessage : IMessage
     {
         throw new NotImplementedException();
     }

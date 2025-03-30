@@ -16,5 +16,5 @@ public interface IBusConnection
     /// Creates a new channel for communication with RabbitMQ.
     /// </summary>
     /// <returns>A new channel instance.</returns>
-    IModel CreateChannel();
+    Task<IChannel> CreateChannelAsync();
 }

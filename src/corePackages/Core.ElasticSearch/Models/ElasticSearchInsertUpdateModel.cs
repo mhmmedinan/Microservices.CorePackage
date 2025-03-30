@@ -21,7 +21,7 @@ public class ElasticSearchInsertUpdateModel : ElasticSearchModel
         Item = item;
     }
 
-    public ElasticSearchInsertUpdateModel(Id elasticId, string indexName, object item)
+    public ElasticSearchInsertUpdateModel(string elasticId, string indexName, object item)
         : base(elasticId, indexName)
     {
         Item = item;

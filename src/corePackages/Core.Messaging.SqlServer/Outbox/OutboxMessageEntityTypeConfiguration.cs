@@ -32,8 +32,6 @@ public class OutboxMessageEntityTypeConfiguration : IEntityTypeConfiguration<Out
         builder.Property(x => x.ProcessedOn)
             .IsRequired(false);
 
-        builder.Property(x => x.Error)
-            .IsRequired(false);
 
         builder.Property(x => x.Type)
             .IsRequired()

@@ -20,7 +20,7 @@ public class PublisherChannelContext : IDisposable
     /// <param name="logger">Logger for context operations.</param>
     /// <exception cref="ArgumentNullException">Thrown when any parameter is null.</exception>
     public PublisherChannelContext(
-        IModel channel,
+        IChannel channel,
         QueueReferences queueReferences,
         IPublisherChannelContextPool publisherChannelContextPool,
         ILogger<PublisherChannelContext> logger)
@@ -34,7 +34,7 @@ public class PublisherChannelContext : IDisposable
     /// <summary>
     /// Gets the RabbitMQ channel.
     /// </summary>
-    public IModel Channel { get; }
+    public IChannel Channel { get; }
 
     /// <summary>
     /// Gets the queue references for this context.

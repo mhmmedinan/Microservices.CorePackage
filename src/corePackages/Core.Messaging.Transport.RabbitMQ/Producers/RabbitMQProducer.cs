@@ -3,6 +3,7 @@ using Core.Abstractions.Messaging.Serialization;
 using Core.Abstractions.Messaging.Transport;
 using Microsoft.Extensions.Logging;
 using Polly;
+using RabbitMQ.Client;
 using System.Text;
 
 namespace Core.Messaging.Transport.RabbitMQ.Producers;
@@ -42,24 +43,24 @@ public class RabbitMQProducer : IEventBusPublisher
     /// <param name="cancellationToken">Cancellation token for the operation.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     /// <exception cref="ArgumentNullException">Thrown when integrationEvent is null.</exception>
-    public Task PublishAsync<TEvent>(TEvent integrationEvent, CancellationToken cancellationToken = default) where TEvent : IIntegrationEvent
+    public async Task PublishAsync<TEvent>(TEvent integrationEvent, CancellationToken cancellationToken = default) where TEvent : IIntegrationEvent
     {
        if (integrationEvent == null)
             throw new ArgumentNullException(nameof(integrationEvent));
 
-        using var context = _publisherChannelFactory.Create(integrationEvent);
+        using var context = await _publisherChannelFactory.CreateAsync(integrationEvent);
 
         var encodedMessage = _messageSerializer.Serialize(integrationEvent);
 
-        var properties = context.Channel.CreateBasicProperties();
-        properties.Persistent = true;
-        properties.Headers = new Dictionary<string, object>
+        var properties = new BasicProperties
         {
-            {
-                HeaderNames.MessageType,
-                integrationEvent.GetType().Name
-            }
+            Persistent = true,
+            Headers = new Dictionary<string, object?>
+        {
+            { HeaderNames.MessageType, integrationEvent.GetType().Name }
+        }
         };
+
 
         var policy = Policy.Handle<System.Exception>().WaitAndRetry(3,retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)), (ex, time) =>
         {
@@ -73,7 +74,7 @@ public class RabbitMQProducer : IEventBusPublisher
 
         policy.Execute(() =>
         {
-            context.Channel.BasicPublish(
+             context.Channel.BasicPublishAsync(
                 exchange: context.QueueReferences.ExchangeName,
                 routingKey: context.QueueReferences.RoutingKey,
                 mandatory: true,
@@ -83,6 +84,5 @@ public class RabbitMQProducer : IEventBusPublisher
                 integrationEvent.EventId,
                 context.QueueReferences.ExchangeName);
         });
-        return Task.CompletedTask;
     }
 }

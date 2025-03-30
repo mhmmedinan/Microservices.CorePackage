@@ -1,12 +1,10 @@
-﻿using Core.CrossCuttingConcerns.Utilities.Results;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Http;
 
 namespace Core.CrossCuttingConcerns.Utilities.Helpers;
 
 public class FileHelper
 {
-    public static string AddAsync(IFormFile file, string basePath)
+    public static string Add(IFormFile file, string basePath)
     {
         try
         {
@@ -29,7 +27,7 @@ public class FileHelper
     }
 
 
-    public static string UpdateAsync(string sourcePath, IFormFile file, string basePath)
+    public static string Update(string sourcePath, IFormFile file, string basePath)
     {
         var result = newPath(file, basePath);
         try
@@ -42,7 +40,7 @@ public class FileHelper
                 }
             }
 
-            DeleteAsync(sourcePath);
+            Delete(sourcePath);
         }
         catch (Exception e)
         {
@@ -52,18 +50,14 @@ public class FileHelper
     }
 
 
-    public static DataResult<string> DeleteAsync(string path)
+    public static void Delete(string path)
     {
-        try
-        {
-            File.Delete(path);
-            return DataResult<string>.IsSuccess("Successfully");
-        }
-        catch (Exception exception)
-        {
-            return DataResult<string>.IsError($"Error: {exception.Message}");
-        }
+        if (!File.Exists(path))
+            throw new FileNotFoundException("Dosya bulunamadı.", path);
+
+        File.Delete(path);
     }
+
 
     private static (string newPath, string Path2) newPath(IFormFile file, string basePath)
     {

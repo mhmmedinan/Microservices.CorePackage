@@ -164,13 +164,14 @@ public class KafkaConsumer : IEventBusSubscriber, IDisposable
     /// <summary>
     /// Disposes of resources used by the Kafka consumer
     /// </summary>
-    public void Dispose()
+   public void Dispose()
     {
         if (_disposed) return;
 
+        _consumer?.Close();
         _consumer?.Dispose();
         _schemaRegistry?.Dispose();
-        (_processingBlock as IDisposable)?.Dispose();
+        _processingBlock.Complete();
 
         _disposed = true;
     }

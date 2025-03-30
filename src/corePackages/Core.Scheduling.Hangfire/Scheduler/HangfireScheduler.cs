@@ -5,6 +5,7 @@ using MediatR;
 using Newtonsoft.Json;
 using System.Linq.Expressions;
 using Core.Abstractions.Extensions.DependencyInjection;
+using Core.Abstractions.CQRS.Command;
 
 namespace Core.Scheduling.Hangfire.Scheduler;
 
@@ -14,21 +15,20 @@ public class HangfireScheduler : IHangfireScheduler
 
     public HangfireScheduler(IMediator mediator)
     {
-        _mediator = mediator;
+        _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
     }
-
+    // Enqueue methods:
     public string Enqueue<T>(
-            T command,
-            string parentJobId,
-            JobContinuationOptions continuationOption,
-            string? description = null)
-            where T : IInternalCommand
+        T command,
+        string parentJobId,
+        JobContinuationOptions continuationOption,
+        string? description = null)
+        where T : IInternalCommand
     {
-        var messageSerializedObject = SerializeObject(command, description);
-
+        var serializedObject = SerializeObject(command, description);
         return BackgroundJob.ContinueJobWith(
             parentJobId,
-            () => _mediator.SendScheduleObject(messageSerializedObject),
+            () => _mediator.SendScheduleObject(serializedObject),
             continuationOption);
     }
 
@@ -44,134 +44,177 @@ public class HangfireScheduler : IHangfireScheduler
             continuationOption);
     }
 
+    // Exists method:
+    public Task<bool> ExistsAsync(string scheduleId)
+    {
+        var monitoringApi = JobStorage.Current.GetMonitoringApi();
+        var jobDetails = monitoringApi.JobDetails(scheduleId);
+        return Task.FromResult(jobDetails != null);
+    }
+
+    // RemoveSchedule method:
+    public Task RemoveScheduleAsync(string scheduleId)
+    {
+        BackgroundJob.Delete(scheduleId);
+        RecurringJob.RemoveIfExists(scheduleId);
+        return Task.CompletedTask;
+    }
+
+    // ScheduleSerializedObject methods:
     public Task ScheduleAsync(
-           ScheduleSerializedObject scheduleSerializedObject,
-           DateTimeOffset scheduleAt,
-           string? description = null)
+        ScheduleSerializedObject scheduleSerializedObject,
+        DateTimeOffset scheduleAt,
+        string? description = null)
     {
-        BackgroundJob.Schedule(() => _mediator.SendScheduleObject(scheduleSerializedObject), scheduleAt);
-
+        BackgroundJob.Schedule(
+            () => _mediator.SendScheduleObject(scheduleSerializedObject), scheduleAt);
         return Task.CompletedTask;
     }
 
-    public Task ScheduleAsync<T>(T command, TimeSpan delay, string? description = null)
-           where T : IInternalCommand
+    public Task ScheduleAsync(
+        ScheduleSerializedObject scheduleSerializedObject,
+        TimeSpan delay,
+        string? description = null)
     {
-        var mediatorSerializedObject = SerializeObject(command, description);
-        var newTime = DateTime.Now + delay;
-        BackgroundJob.Schedule(() => _mediator.SendScheduleObject(mediatorSerializedObject), newTime);
+        return ScheduleAsync(scheduleSerializedObject, DateTimeOffset.UtcNow.Add(delay), description);
+    }
 
+    // ICommand methods:
+    public Task ScheduleAsync<TCommand>(
+        TCommand command,
+        DateTimeOffset scheduleAt,
+        string? description = null,
+        CancellationToken cancellationToken = default)
+        where TCommand : ICommand
+    {
+        var serializedObject = SerializeObject(command, description);
+        BackgroundJob.Schedule(() => _mediator.SendScheduleObject(serializedObject), scheduleAt);
         return Task.CompletedTask;
     }
 
-    public Task ScheduleAsync(Expression<Func<Task>> methodCall, DateTime scheduleAt, string? description = null)
+    public Task ScheduleAsync<TCommand>(
+        TCommand command,
+        TimeSpan delay,
+        string? description = null,
+        CancellationToken cancellationToken = default)
+        where TCommand : ICommand
+    {
+        return ScheduleAsync(command, DateTimeOffset.UtcNow.Add(delay), description, cancellationToken);
+    }
+
+    // Expression method call:
+    public Task ScheduleAsync(
+        Expression<Func<Task>> methodCall,
+        DateTime scheduleAt,
+        string? description = null,
+        CancellationToken cancellationToken = default)
     {
         BackgroundJob.Schedule(methodCall, scheduleAt);
         return Task.CompletedTask;
     }
 
+    // Internal command methods:
     public Task ScheduleAsync(
-           ScheduleSerializedObject scheduleSerializedObject,
-           TimeSpan delay,
-           string? description = null)
+        IInternalCommand internalCommand,
+        CancellationToken cancellationToken = default)
     {
-        var newTime = DateTime.Now + delay;
-        BackgroundJob.Schedule(() => _mediator.SendScheduleObject(scheduleSerializedObject), newTime);
-
+        var client = new BackgroundJobClient();
+        client.Enqueue<CommandProcessorHangfireBridge>(bridge => bridge.Send(internalCommand, ""));
         return Task.CompletedTask;
     }
 
+    public async Task ScheduleAsync(
+        IInternalCommand[] internalCommands,
+        CancellationToken cancellationToken = default)
+    {
+        foreach (var cmd in internalCommands)
+            await ScheduleAsync(cmd, cancellationToken);
+    }
+
+    // IMessage methods:
+    public Task ScheduleAsync<TMessage>(
+        TMessage message,
+        DateTimeOffset scheduleAt,
+        string? description = null)
+        where TMessage : IMessage
+    {
+        var serializedObject = SerializeObject(message, description);
+        BackgroundJob.Schedule(() => _mediator.SendScheduleObject(serializedObject), scheduleAt);
+        return Task.CompletedTask;
+    }
+
+    public Task ScheduleAsync<TMessage>(
+        TMessage message,
+        TimeSpan delay,
+        string? description = null)
+        where TMessage : IMessage
+    {
+        return ScheduleAsync(message, DateTimeOffset.UtcNow.Add(delay), description);
+    }
+
+    // Recurring ScheduleSerializedObject:
     public Task ScheduleRecurringAsync(
         ScheduleSerializedObject scheduleSerializedObject,
         string name,
         string cronExpression,
         string? description = null)
     {
-        RecurringJob.AddOrUpdate(name, () => _mediator.SendScheduleObject(scheduleSerializedObject),
-            cronExpression, TimeZoneInfo.Local);
-
+        RecurringJob.AddOrUpdate(
+            name,
+            () => _mediator.SendScheduleObject(scheduleSerializedObject),
+            cronExpression,
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.Local });
         return Task.CompletedTask;
     }
 
-    private ScheduleSerializedObject SerializeObject(object messageObject, string? description)
+    // Recurring ICommand:
+    public Task ScheduleRecurringAsync<TCommand>(
+        TCommand command,
+        string name,
+        string cronExpression,
+        string? description = null,
+        CancellationToken cancellationToken = default)
+        where TCommand : ICommand
     {
-        string fullTypeName = messageObject.GetType().FullName;
-        string data = JsonConvert.SerializeObject(messageObject,
-            new JsonSerializerSettings { Formatting = Formatting.None, });
-
-        return new ScheduleSerializedObject(fullTypeName, data, description,
-            messageObject.GetType().Assembly.GetName().FullName);
-    }
-
-    public Task ScheduleAsync(IMessage message, CancellationToken cancellationToken = default)
-    {
-        var client = new BackgroundJobClient();
-
-        // https://codeopinion.com/using-hangfire-and-mediatr-as-a-message-dispatcher/
-        // client.Enqueue<IMediator>(x => x.Send(request, default)); // we could use our mediator directly but because we want to use some hangfire attribute we will wap it in a bridge
-        client.Enqueue<MessageProcessorHangfireBridge>(bridge => bridge.Send(message, ""));
-
+        var serializedObject = SerializeObject(command, description);
+        RecurringJob.AddOrUpdate(
+            name,
+            () => _mediator.SendScheduleObject(serializedObject),
+            cronExpression,
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.Local });
         return Task.CompletedTask;
     }
 
-    public async Task ScheduleAsync(IMessage[] messages, CancellationToken cancellationToken = default)
-    {
-        foreach (var message in messages)
-        {
-            await ScheduleAsync(message, cancellationToken);
-        }
-    }
-
-    public Task ScheduleAsync(IInternalCommand command, CancellationToken cancellationToken = default)
-    {
-        var client = new BackgroundJobClient();
-
-        // https://codeopinion.com/using-hangfire-and-mediatr-as-a-message-dispatcher/
-        // client.Enqueue<IMediator>(x => x.Send(request, default)); // we could use our mediator directly but because we want to use some hangfire attribute we will wap it in a bridge
-        client.Enqueue<CommandProcessorHangfireBridge>(bridge => bridge.Send(command, ""));
-
-        return Task.CompletedTask;
-    }
-
-    public async Task ScheduleAsync(IInternalCommand[] commands, CancellationToken cancellationToken = default)
-    {
-        foreach (var internalCommand in commands)
-        {
-            await ScheduleAsync(internalCommand, cancellationToken);
-        }
-    }
-
-    public Task ScheduleAsync(IInternalCommand command, DateTimeOffset scheduleAt, string? description = null)
-    {
-        var mediatorSerializedObject = SerializeObject(command, description);
-        BackgroundJob.Schedule(() => _mediator.SendScheduleObject(mediatorSerializedObject), scheduleAt);
-
-        return Task.CompletedTask;
-    }
-
-    public async Task ScheduleAsync(
-        IInternalCommand[] commands,
-        DateTimeOffset scheduleAt,
-        string? description = null)
-    {
-        foreach (var command in commands)
-        {
-            await ScheduleAsync(command, scheduleAt, description);
-        }
-    }
-
-    public Task ScheduleRecurringAsync(
-        IInternalCommand command,
+    // Recurring IMessage:
+    public Task ScheduleRecurringAsync<TMessage>(
+        TMessage message,
         string name,
         string cronExpression,
         string? description = null)
+        where TMessage : IMessage
     {
-        var mediatorSerializedObject = SerializeObject(command, description);
-        RecurringJob.AddOrUpdate(name, () => _mediator.SendScheduleObject(mediatorSerializedObject),
-            cronExpression, TimeZoneInfo.Local);
-
+        var serializedObject = SerializeObject(message, description);
+        RecurringJob.AddOrUpdate(
+            name,
+            () => _mediator.SendScheduleObject(serializedObject),
+            cronExpression,
+             new RecurringJobOptions
+             {
+                 TimeZone = TimeZoneInfo.Local
+             });
         return Task.CompletedTask;
     }
+
+
+    private ScheduleSerializedObject SerializeObject(object messageObject, string? description)
+    {
+        var typeName = messageObject.GetType().FullName;
+        var data = JsonConvert.SerializeObject(messageObject);
+        var assemblyName = messageObject.GetType().Assembly.GetName().FullName;
+
+        return new ScheduleSerializedObject(typeName, assemblyName, data, description);
+    }
+
 }
 
 

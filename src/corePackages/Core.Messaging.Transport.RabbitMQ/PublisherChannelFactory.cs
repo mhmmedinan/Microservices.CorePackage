@@ -17,12 +17,12 @@ public class PublisherChannelFactory : IPublisherChannelFactory
     }
 
 
-    public PublisherChannelContext Create(IIntegrationEvent message)
+    public Task<PublisherChannelContext> CreateAsync(IIntegrationEvent message)
     {
        if(message==null)
             throw new ArgumentNullException(nameof(message));
         var references = _queueReferenceFactory.Create((dynamic)message);
-        var result = _contextPool.Get(references);
+        var result = _contextPool.GetAsync(references);
         return result;
     }
 }

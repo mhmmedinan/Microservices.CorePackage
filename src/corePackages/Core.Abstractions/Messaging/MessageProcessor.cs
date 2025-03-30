@@ -57,19 +57,20 @@ public class MessageProcessor : IMessageProcessor
 
     private Task RunMiddlewareAsync<TMessage>(
         TMessage request,
-        HandleMessageDelegate<TMessage>
-        handleMessageHandlerCall,
+        HandleMessageDelegate<TMessage> handleMessageHandlerCall,
         IMessageContext messageContext,
         CancellationToken cancellationToken)
         where TMessage : IMessage
     {
-        HandleMessageDelegate<TMessage> next = null;
-
         var middlewares = (IEnumerable<IMessageMiddleware<TMessage>>)_serviceProvider.GetService(typeof(IEnumerable<IMessageMiddleware<TMessage>>));
 
-        next = middlewares.Reverse().Aggregate(handleMessageHandlerCall, (messageDelegate, middleware) =>
-            ((message, ctx, ct) => middleware.RunAsync(message, ctx, ct, messageDelegate)));
+        HandleMessageDelegate<TMessage> next = middlewares
+            .Reverse()
+            .Aggregate(handleMessageHandlerCall, (nextDelegate, middleware) =>
+                new HandleMessageDelegate<TMessage>((msg, ctx, ct) =>
+                    middleware.HandleAsync(msg, ctx, ct, nextDelegate)));
 
         return next.Invoke(request, messageContext, cancellationToken);
     }
+
 }

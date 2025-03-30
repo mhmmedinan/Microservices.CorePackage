@@ -31,7 +31,7 @@ public sealed class PublisherChannelContextPool : IPublisherChannelContextPool, 
     /// <param name="references">The queue references for the channel.</param>
     /// <returns>A publisher channel context.</returns>
     /// <exception cref="ArgumentNullException">Thrown when references is null.</exception>
-    public PublisherChannelContext Get(QueueReferences references)
+    public async Task<PublisherChannelContext> GetAsync(QueueReferences references)
     {
         if (references == null)
             throw new ArgumentNullException(nameof(references));
@@ -40,8 +40,9 @@ public sealed class PublisherChannelContextPool : IPublisherChannelContextPool, 
 
         if (!pool.TryTake(out var ctx))
         {
-            var channel = _connection.CreateChannel();
-            channel.ExchangeDeclare(exchange: references.ExchangeName, type: ExchangeType.Topic);
+            var channel = await _connection.CreateChannelAsync();
+            await channel.ExchangeDeclareAsync(exchange: references.ExchangeName, type: ExchangeType.Topic);
+
             ctx = new PublisherChannelContext(channel, references, this, _logger);
             _logger.LogDebug("Created new channel context for exchange '{ExchangeName}'", references.ExchangeName);
         }
@@ -52,6 +53,7 @@ public sealed class PublisherChannelContextPool : IPublisherChannelContextPool, 
 
         return ctx;
     }
+
 
     /// <summary>
     /// Returns a channel context to the pool.
@@ -86,7 +88,7 @@ public sealed class PublisherChannelContextPool : IPublisherChannelContextPool, 
             foreach (var ctx in pool)
             {
                 if (ctx.Channel.IsOpen)
-                    ctx.Channel.Close();
+                    ctx.Channel.CloseAsync();
                 ctx.Channel.Dispose();
             }
         }

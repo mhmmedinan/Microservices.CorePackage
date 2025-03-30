@@ -26,7 +26,7 @@ public class CommandProcessor : ICommandProcessor
 
     public Task ScheuldeAsync(Expression<Func<Task>> methodCall, DateTime delay, CancellationToken cancellationToken = default)
     {
-        return _commandScheduler.ScheduleAsync(methodCall, delay, string.Empty);
+        return _commandScheduler.ScheduleAsync(methodCall, delay, string.Empty,cancellationToken);
     }
 
     public Task ScheuldeAsync(IInternalCommand[] internalCommands, CancellationToken cancellationToken = default)

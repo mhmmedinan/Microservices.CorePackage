@@ -39,6 +39,8 @@ public class OutboxMessage
     /// </summary>
     public string? CorrelationId { get; private set; }
 
+    public string EventId { get; set; }
+
     /// <summary>
     /// Initializes a new instance of the <see cref="OutboxMessage"/> class.
     /// Initializes a new outbox message.
