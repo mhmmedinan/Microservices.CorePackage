@@ -27,7 +27,7 @@ public class ConsulServiceDiscoveryHostedService : IHostedService
     // Registers service to Consul registry
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        _registrationId = $"{_consulOptions.ServiceName}-{Guid.NewGuid()}";
+        _registrationId = $"{_consulOptions.ServiceName}";
 
         var registration = new AgentServiceRegistration
         {
