@@ -53,6 +53,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core.FeatureFlags", "src\co
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core.FileStorage", "src\corePackages\Core.FileStorage\Core.FileStorage.csproj", "{4F54840B-17DF-4F20-B08C-8BF0FF73FCE6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core.Localization", "src\corePackages\Core.Localization\Core.Localization.csproj", "{97D3E05A-54CD-4C0C-A097-A324608913C8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core.Security.Redis", "src\corePackages\Core.Security.Redis\Core.Security.Redis.csproj", "{F3415CC6-44EE-40D5-A421-4BFF3324936E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -151,6 +155,14 @@ Global
 		{4F54840B-17DF-4F20-B08C-8BF0FF73FCE6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4F54840B-17DF-4F20-B08C-8BF0FF73FCE6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4F54840B-17DF-4F20-B08C-8BF0FF73FCE6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{97D3E05A-54CD-4C0C-A097-A324608913C8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{97D3E05A-54CD-4C0C-A097-A324608913C8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{97D3E05A-54CD-4C0C-A097-A324608913C8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{97D3E05A-54CD-4C0C-A097-A324608913C8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F3415CC6-44EE-40D5-A421-4BFF3324936E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F3415CC6-44EE-40D5-A421-4BFF3324936E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F3415CC6-44EE-40D5-A421-4BFF3324936E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F3415CC6-44EE-40D5-A421-4BFF3324936E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -180,6 +192,8 @@ Global
 		{9AF3ACB5-657D-480F-BBC9-035305E4AA5B} = {484B79EE-75B6-4630-82A3-7A4CA4B461FD}
 		{85049756-99DD-41E4-B0D2-6E67841C0004} = {484B79EE-75B6-4630-82A3-7A4CA4B461FD}
 		{4F54840B-17DF-4F20-B08C-8BF0FF73FCE6} = {484B79EE-75B6-4630-82A3-7A4CA4B461FD}
+		{97D3E05A-54CD-4C0C-A097-A324608913C8} = {484B79EE-75B6-4630-82A3-7A4CA4B461FD}
+		{F3415CC6-44EE-40D5-A421-4BFF3324936E} = {484B79EE-75B6-4630-82A3-7A4CA4B461FD}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F83297DA-E712-4DAC-9A27-8D3AC46345AF}
