@@ -1,4 +1,5 @@
 ﻿using Core.Security.Redis.Services;
+using Core.Security.Redis.Session;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
@@ -13,6 +14,7 @@ public static class SecurityRedisServiceRegistrationExtension
         var multiplexer = ConnectionMultiplexer.Connect(redisOptions);
         services.AddSingleton<IConnectionMultiplexer>(multiplexer);
         services.AddScoped<IAuthorizedRoleService, AutorizedRoleManager>();
+        services.AddScoped<IUserSessionService, RedisUserSessionService>();
         return services;
     }
 }

@@ -4,7 +4,7 @@ namespace Core.Security.JWT;
 
 public interface ITokenHelper
 {
-    AccessToken CreateToken(User user);
+    AccessToken CreateToken(User user, string sessionId);
 
     RefreshToken CreateRefreshToken(User user, string ipAddress);
 }
