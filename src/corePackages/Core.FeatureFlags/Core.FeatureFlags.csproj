@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Core.Persistence" Version="1.0.1" />
+  </ItemGroup>
+
 </Project>
