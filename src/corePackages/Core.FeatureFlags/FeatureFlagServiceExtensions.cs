@@ -10,7 +10,7 @@ namespace Core.FeatureFlags;
 
 public static class FeatureFlagServiceExtensions
 {
-    public static IServiceCollection AddFeatureFlagServices(IServiceCollection services,IConfiguration configuration)
+    public static IServiceCollection AddFeatureFlagServices(this IServiceCollection services,IConfiguration configuration)
     {
         services
             .Configure<MongoConnectionSettings>(configuration.GetSection("FeatureFlagMongoDb"))
