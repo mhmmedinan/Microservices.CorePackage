@@ -6,16 +6,16 @@ public static class EfConfigurationHelper
 {
     public static IConfiguration GetConfiguration(string? basePath = null)
     {
-        var environmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        var environmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Local";
 
-        var builder = new ConfigurationBuilder()
-            .SetBasePath(basePath)
-            .AddJsonFile("appsettings.json")
-            .AddJsonFile($"appsettings.{environmentName}.json", true)
-            .AddEnvironmentVariables();
+        Console.WriteLine($"[EfConfig] Environment: {environmentName}");
+        Console.WriteLine($"[EfConfig] BasePath: {basePath ?? Directory.GetCurrentDirectory()}");
 
-        var config = builder.Build();
-
-        return config;
+        return new ConfigurationBuilder()
+            .SetBasePath(basePath ?? Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+            .AddJsonFile($"appsettings.{environmentName}.json", optional: true, reloadOnChange: true)
+            .AddEnvironmentVariables()
+            .Build();
     }
 }
